@@ -1,0 +1,15 @@
+# Local dev Postgres. Port 5433 on purpose — avoids clobbering any system Postgres on 5432.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: kaiden
+      POSTGRES_PASSWORD: kaiden
+      POSTGRES_DB: kaiden
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
