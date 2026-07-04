@@ -10,7 +10,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "generate": "drizzle-kit generate",
-    "migrate": "drizzle-kit migrate"
+    "migrate": "drizzle-kit migrate",
+    "seed:dev": "tsx scripts/seed-dev.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.2",
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@types/pg": "^8.15.0",
     "drizzle-kit": "^0.31.1",
+    "tsx": "^4.23.0",
     "typescript": "^5.8.3"
   }
 }
