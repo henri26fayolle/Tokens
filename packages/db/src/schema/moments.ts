@@ -26,5 +26,7 @@ export const moments = pgTable('moments', {
   metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
   draftCopy: text('draft_copy'),
   published: boolean('published').notNull().default(false),
+  /** Set when the user waves off the "share this session?" suggestion. */
+  dismissedAt: timestamp('dismissed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

@@ -1,24 +1,45 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { type FormEvent, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { type FormEvent, Suspense, useEffect, useState } from 'react';
 import { TabBar } from '../../../components/TabBar';
-import { ApiError, apiPost } from '../../../lib/api';
+import { ApiError, apiGet, apiPost, type MomentSuggestion } from '../../../lib/api';
 import { useSession } from '../../../lib/session';
 
-export default function NewPostPage() {
+function Composer() {
   const { loading, user } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const momentParam = searchParams.get('moment');
+
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [body, setBody] = useState('');
   const [recipe, setRecipe] = useState('');
+  const [momentId, setMomentId] = useState<string | null>(null);
+  const [prefilled, setPrefilled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [loading, user, router]);
+
+  // Prefill from a detected moment (gateway-drafted post).
+  useEffect(() => {
+    if (!user || !momentParam) return;
+    apiGet<{ suggestions: MomentSuggestion[] }>('/v1/me/moments/suggestions')
+      .then(({ suggestions }) => {
+        const match = suggestions.find((s) => s.momentId === momentParam);
+        if (match) {
+          setTitle(match.draft.title);
+          setBody(match.draft.body);
+          setMomentId(match.momentId);
+          setPrefilled(true);
+        }
+      })
+      .catch(() => null);
+  }, [user, momentParam]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -30,6 +51,7 @@ export default function NewPostPage() {
         body,
         url: url || undefined,
         recipe: recipe || undefined,
+        momentId: momentId || undefined,
       });
       router.push('/feed');
     } catch (err) {
@@ -42,7 +64,9 @@ export default function NewPostPage() {
     <main className="container">
       <h1 style={{ fontSize: 22, margin: '4px 0 2px' }}>Share what you built</h1>
       <p className="muted" style={{ marginTop: 0, fontSize: 14 }}>
-        Your verified chips — rank, streak, models — attach automatically. +100 XP.
+        {prefilled
+          ? 'Drafted from your session — tweak it, add a link, post. Your verified chips are attached.'
+          : 'Your verified chips — rank, streak, models — attach automatically. +100 XP.'}
       </p>
       <form onSubmit={submit} className="card">
         <input
@@ -87,5 +111,19 @@ export default function NewPostPage() {
       </form>
       <TabBar />
     </main>
+  );
+}
+
+export default function NewPostPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="container" style={{ paddingTop: 120, textAlign: 'center' }}>
+          <p className="muted">Loading…</p>
+        </main>
+      }
+    >
+      <Composer />
+    </Suspense>
   );
 }

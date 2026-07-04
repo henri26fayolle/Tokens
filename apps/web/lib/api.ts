@@ -118,6 +118,14 @@ export interface CommentItem {
   author: { handle: string; level: number; rank: string };
 }
 
+export interface MomentSuggestion {
+  momentId: string;
+  kind: string;
+  ts: string;
+  metadata: Record<string, unknown>;
+  draft: { title: string; body: string };
+}
+
 export interface LeaderboardEntry {
   position: number | null;
   handle: string;

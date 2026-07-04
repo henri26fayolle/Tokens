@@ -353,6 +353,49 @@ describe('social: posts, kudos, copies', () => {
     expect(badUrl.status).toBe(400);
   });
 
+  it('gateway-drafted suggestions: prefilled from a moment, gone once posted', async () => {
+    // Henri's earlier 15-call deep session produced moments (M5). They should
+    // surface as ready-to-post drafts…
+    const before = await json<{
+      suggestions: Array<{ momentId: string; draft: { title: string; body: string } }>;
+    }>(await apiFetch('/v1/me/moments/suggestions'));
+    expect(before.suggestions.length).toBeGreaterThan(0);
+    const suggestion = before.suggestions[0];
+    expect(suggestion?.draft.title.length).toBeGreaterThan(0);
+    expect(suggestion?.draft.body.length).toBeGreaterThan(0);
+
+    // …publishing one (attaching its momentId) removes it from suggestions.
+    const posted = await apiFetch('/v1/posts', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: suggestion?.draft.title,
+        body: suggestion?.draft.body,
+        momentId: suggestion?.momentId,
+      }),
+    });
+    expect(posted.status).toBe(201);
+    const postedBody = await json<{ chips: { moment?: unknown } }>(posted);
+    expect(postedBody.chips.moment).toBeDefined(); // verified session chips attached
+
+    const after = await json<{ suggestions: Array<{ momentId: string }> }>(
+      await apiFetch('/v1/me/moments/suggestions'),
+    );
+    expect(after.suggestions.some((s) => s.momentId === suggestion?.momentId)).toBe(false);
+
+    // Dismiss removes a different one without posting it.
+    const remaining = after.suggestions[0];
+    if (remaining) {
+      const dismiss = await apiFetch(`/v1/me/moments/${remaining.momentId}/dismiss`, {
+        method: 'POST',
+      });
+      expect(dismiss.status).toBe(200);
+      const final = await json<{ suggestions: Array<{ momentId: string }> }>(
+        await apiFetch('/v1/me/moments/suggestions'),
+      );
+      expect(final.suggestions.some((s) => s.momentId === remaining.momentId)).toBe(false);
+    }
+  });
+
   it('the feed is public and shows the post with author rank', async () => {
     const response = await fetch(`${apiUrl}/v1/feed`);
     expect(response.status).toBe(200);

@@ -68,6 +68,32 @@ interface FeedAuthor {
   rank: string;
 }
 
+function modelShort(model: string): string {
+  return model.split('/')[1] ?? model;
+}
+
+/**
+ * Turn a detected moment into a ready-to-post draft (title + body) so the
+ * composer opens pre-filled instead of blank — the brief's <30s posting.
+ * All copy derives from metadata + the engine's draftCopy; never content.
+ */
+function buildMomentDraft(moment: typeof moments.$inferSelect): { title: string; body: string } {
+  const meta = moment.metadata;
+  const body = moment.draftCopy ?? 'Shipped something with AI today.';
+  if (moment.kind === 'new-model') {
+    const model = typeof meta.model === 'string' ? meta.model : 'a new model';
+    return { title: `First run with ${model}`, body };
+  }
+  const turns = typeof meta.turns === 'number' ? meta.turns : null;
+  const models = Array.isArray(meta.models) ? (meta.models as string[]).map(modelShort) : [];
+  const model = models[0] ?? 'AI';
+  const title =
+    moment.kind === 'marathon'
+      ? `Marathon: ${turns ?? 'many'} turns with ${model}`
+      : `${turns ? `A ${turns}-turn session` : 'A deep session'} with ${model}`;
+  return { title, body };
+}
+
 function toFeedPost(
   post: typeof posts.$inferSelect,
   author: FeedAuthor,
@@ -470,6 +496,49 @@ export function registerPostRoutes(server: FastifyInstance, deps: Deps): void {
       .from(posts)
       .where(eq(posts.id, post.id));
     return { copied: true, copyCount: fresh?.copyCount ?? post.copyCount };
+  });
+
+  server.get('/v1/me/moments/suggestions', async (request, reply) => {
+    const user = await requireUser(request, reply);
+    if (!user) return;
+    const weekAgo = new Date(Date.now() - 7 * 86_400_000);
+    // Anti-join: notable moments the user hasn't already posted or dismissed.
+    const rows = await deps.db
+      .select({ moment: moments })
+      .from(moments)
+      .leftJoin(posts, eq(posts.momentId, moments.id))
+      .where(
+        and(
+          eq(moments.userId, user.id),
+          isNull(moments.dismissedAt),
+          gt(moments.ts, weekAgo),
+          isNull(posts.id),
+        ),
+      )
+      .orderBy(desc(moments.ts))
+      .limit(5);
+    return {
+      suggestions: rows.map(({ moment }) => ({
+        momentId: moment.id,
+        kind: moment.kind,
+        ts: moment.ts,
+        metadata: moment.metadata,
+        draft: buildMomentDraft(moment),
+      })),
+    };
+  });
+
+  server.post('/v1/me/moments/:id/dismiss', async (request, reply) => {
+    const user = await requireUser(request, reply);
+    if (!user) return;
+    const { id } = request.params as { id: string };
+    const updated = await deps.db
+      .update(moments)
+      .set({ dismissedAt: new Date() })
+      .where(and(eq(moments.id, id), eq(moments.userId, user.id)))
+      .returning({ id: moments.id });
+    if (updated.length === 0) return reply.code(404).send({ error: 'not_found' });
+    return { dismissed: true };
   });
 
   server.post('/v1/users/:handle/follow', async (request, reply) => {

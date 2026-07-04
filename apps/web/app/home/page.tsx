@@ -13,6 +13,7 @@ import {
   type AchievementItem,
   apiGet,
   apiPost,
+  type MomentSuggestion,
   type Onboarding,
   type Profile,
   type StatsDay,
@@ -26,6 +27,7 @@ export default function HomePage() {
   const [stats, setStats] = useState<StatsDay[]>([]);
   const [achievements, setAchievements] = useState<AchievementItem[]>([]);
   const [onboarding, setOnboarding] = useState<Onboarding | null>(null);
+  const [suggestion, setSuggestion] = useState<MomentSuggestion | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/');
@@ -36,16 +38,21 @@ export default function HomePage() {
     (async () => {
       // Fresh XP on open (idempotent), then load everything.
       await apiPost('/v1/me/xp/process').catch(() => null);
-      const [profileData, statsData, achievementsData, onboardingData] = await Promise.all([
-        apiGet<Profile>('/v1/me/profile'),
-        apiGet<{ days: StatsDay[] }>('/v1/me/stats?days=14'),
-        apiGet<{ achievements: AchievementItem[] }>('/v1/me/achievements'),
-        apiGet<Onboarding>('/v1/me/onboarding'),
-      ]);
+      const [profileData, statsData, achievementsData, onboardingData, suggestionsData] =
+        await Promise.all([
+          apiGet<Profile>('/v1/me/profile'),
+          apiGet<{ days: StatsDay[] }>('/v1/me/stats?days=14'),
+          apiGet<{ achievements: AchievementItem[] }>('/v1/me/achievements'),
+          apiGet<Onboarding>('/v1/me/onboarding'),
+          apiGet<{ suggestions: MomentSuggestion[] }>('/v1/me/moments/suggestions').catch(() => ({
+            suggestions: [],
+          })),
+        ]);
       setProfile(profileData);
       setStats(statsData.days);
       setAchievements(achievementsData.achievements);
       setOnboarding(onboardingData);
+      setSuggestion(suggestionsData.suggestions[0] ?? null);
     })().catch(() => null);
   }, [user]);
 
@@ -103,6 +110,39 @@ export default function HomePage() {
             </div>
           </div>
         </Link>
+      )}
+
+      {suggestion && (
+        <div
+          className="card"
+          style={{ borderColor: 'var(--accent)', background: 'var(--accent-soft)' }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Share this session?</div>
+          <div className="muted" style={{ fontSize: 14, marginBottom: 12 }}>
+            {suggestion.draft.body}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ width: 'auto', padding: '9px 16px' }}
+              onClick={() => router.push(`/post/new?moment=${suggestion.momentId}`)}
+            >
+              Draft the post →
+            </button>
+            <button
+              type="button"
+              className="btn"
+              style={{ width: 'auto', padding: '9px 16px' }}
+              onClick={() => {
+                apiPost(`/v1/me/moments/${suggestion.momentId}/dismiss`).catch(() => null);
+                setSuggestion(null);
+              }}
+            >
+              Not now
+            </button>
+          </div>
+        </div>
       )}
 
       <section className="card" style={{ textAlign: 'center', paddingTop: 26 }}>

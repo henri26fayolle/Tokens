@@ -50,6 +50,13 @@
       "when": 1783161392681,
       "tag": "0006_legal_hiroim",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783164711123,
+      "tag": "0007_dizzy_zzzax",
+      "breakpoints": true
     }
   ]
 }

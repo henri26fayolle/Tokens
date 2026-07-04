@@ -46,6 +46,7 @@ const MOMENTS_ALLOWED = [
   'metadata',
   'draft_copy',
   'published',
+  'dismissed_at',
   'created_at',
 ];
 

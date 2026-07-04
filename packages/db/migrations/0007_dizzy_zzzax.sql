@@ -1,0 +1,1 @@
+ALTER TABLE "moments" ADD COLUMN "dismissed_at" timestamp with time zone;
