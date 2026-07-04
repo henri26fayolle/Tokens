@@ -20,6 +20,8 @@ export function buildServer(options: ApiOptions) {
       level: options.logLevel ?? process.env.LOG_LEVEL ?? 'info',
       ...(options.loggerStream ? { stream: options.loggerStream } : {}),
     },
+    // Behind Railway/Vercel proxies: x-forwarded-* is the truth.
+    trustProxy: true,
   });
 
   // Bodies arrive as raw Buffers: better-auth parses its own requests, and

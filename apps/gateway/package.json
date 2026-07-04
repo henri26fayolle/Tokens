@@ -11,6 +11,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -18,12 +19,12 @@
     "@kaiden/db": "workspace:*",
     "@kaiden/shared": "workspace:*",
     "fastify": "^5.4.0",
+    "tsx": "^4.20.0",
     "undici": "^8.6.0"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
     "openai": "^6.45.0",
-    "tsx": "^4.20.0",
     "typescript": "^5.8.3",
     "vitest": "^3.2.0"
   }

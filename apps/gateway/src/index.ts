@@ -31,7 +31,8 @@ if (databaseUrl) {
   process.exit(1);
 }
 
-const port = Number(process.env.GATEWAY_PORT ?? 4100);
+// Railway/hosts inject PORT; GATEWAY_PORT is the local convention.
+const port = Number(process.env.PORT ?? process.env.GATEWAY_PORT ?? 4100);
 const server = buildServer({ keyResolver, createEventSink, upstreams });
 
 server.listen({ port, host: '0.0.0.0' }).catch((error) => {

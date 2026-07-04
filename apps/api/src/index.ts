@@ -13,7 +13,8 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-const port = Number(process.env.API_PORT ?? 4000);
+// Railway/hosts inject PORT; API_PORT is the local convention.
+const port = Number(process.env.PORT ?? process.env.API_PORT ?? 4000);
 const db = await createDatabase(databaseUrl);
 const server = buildServer({
   db,

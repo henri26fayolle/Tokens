@@ -26,9 +26,18 @@ export function createAuth({ db, secret, baseURL }: CreateAuthOptions) {
         }
       : undefined;
 
+  // Browser-facing origins allowed to hit auth endpoints. In production the
+  // web app proxies /api/auth via Vercel rewrites, so the browser origin is
+  // kaiden.social — not the api's own host.
+  const trustedOrigins = (process.env.TRUSTED_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   return betterAuth({
     secret,
     ...(baseURL ? { baseURL } : {}),
+    ...(trustedOrigins.length > 0 ? { trustedOrigins } : {}),
     database: drizzleAdapter(db, {
       provider: 'pg',
       schema: { user: users, session: sessions, account: accounts, verification: verifications },

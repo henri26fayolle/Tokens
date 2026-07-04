@@ -58,6 +58,8 @@ export function buildServer(options: GatewayOptions) {
       ...(options.loggerStream ? { stream: options.loggerStream } : {}),
     },
     bodyLimit: 32 * 1024 * 1024,
+    // Behind Railway's proxy: x-forwarded-* is the truth.
+    trustProxy: true,
   });
 
   // Proxied bodies must stay raw bytes — no JSON parsing on the request path.
