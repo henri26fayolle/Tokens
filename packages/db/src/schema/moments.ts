@@ -14,7 +14,13 @@ export const moments = pgTable('moments', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id),
-  /** 'deep_session' | 'multi_tool' | 'new_model' | … */
+  /**
+   * Deterministic (user/kind/scope) — reprocessing converges on the latest
+   * replay via upsert. Unlike xp_ledger, moments may be UPDATED (a mid-day
+   * draft grows as the session does); they are content-free either way.
+   */
+  idempotencyKey: text('idempotency_key').notNull().unique(),
+  /** 'deep-session' | 'marathon' | 'new-model' | … */
   kind: text('kind').notNull(),
   ts: timestamp('ts', { withTimezone: true }).notNull(),
   metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),

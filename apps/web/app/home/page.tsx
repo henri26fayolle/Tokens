@@ -8,6 +8,7 @@ import { Crest } from '../../components/Crest';
 import { PushButton } from '../../components/PushButton';
 import { ShareCardButton } from '../../components/ShareCardButton';
 import { TabBar } from '../../components/TabBar';
+import { WrappedButton } from '../../components/WrappedButton';
 import {
   type AchievementItem,
   apiGet,
@@ -207,6 +208,7 @@ export default function HomePage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <ShareCardButton profile={profile} />
+        {(onboarding?.connected ?? false) && <WrappedButton handle={profile.handle} />}
         <PushButton />
       </div>
 

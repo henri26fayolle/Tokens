@@ -40,6 +40,7 @@ const USAGE_EVENTS_ALLOWED = [
 const MOMENTS_ALLOWED = [
   'id',
   'user_id',
+  'idempotency_key',
   'kind',
   'ts',
   'metadata',

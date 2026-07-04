@@ -26,6 +26,21 @@ export interface LedgerProposal {
   idempotencyKey: string;
 }
 
+/**
+ * A postable feed item (Phase 2 seed, brief §8): notable sessions captured
+ * with metadata chips and pre-drafted copy. Metadata/draft are built ONLY
+ * from usage metadata — never from conversation content. Idempotency keys
+ * are deterministic; persistence upserts (converge-to-latest replay).
+ */
+export interface MomentProposal {
+  kind: 'deep-session' | 'marathon' | 'new-model';
+  day: string;
+  ts: Date;
+  metadata: Record<string, unknown>;
+  draftCopy: string;
+  idempotencyKey: string;
+}
+
 /** Mirrors the daily_activity row for one user-local day. */
 export interface DayAggregate {
   day: string;
@@ -62,12 +77,14 @@ export interface DayComputation {
   /** Streak value for this day. */
   streak: number;
   aggregate: DayAggregate;
+  moments: MomentProposal[];
 }
 
 export interface UserComputation {
   ledger: LedgerProposal[];
   achievements: string[];
   days: DayAggregate[];
+  moments: MomentProposal[];
   lastActiveDay: string | null;
   currentStreak: number;
   longestStreak: number;

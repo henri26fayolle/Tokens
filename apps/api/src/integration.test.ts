@@ -290,7 +290,39 @@ describe('processor against a real database', () => {
     ).length;
     expect(countAfter).toBe(countBefore);
 
+    // Moments: day 1 had a 12-turn session (deep) + first model → 2 rows,
+    // stable across reprocessing (upsert, not append).
+    const momentRows = (await db.select().from(schema.moments)).filter(
+      (row) => row.userId === userId,
+    );
+    expect(momentRows.map((row) => row.kind).sort()).toEqual(['deep-session', 'new-model']);
+    expect(momentRows.every((row) => (row.draftCopy ?? '').length > 0)).toBe(true);
+
     const userRow = await db.select().from(schema.users).where(eq(schema.users.id, userId));
     expect(userRow[0]).toMatchObject({ lifetimeXp: 299, level: 2, currentStreak: 1 });
+  });
+});
+
+describe('wrapped', () => {
+  it('aggregates the month from daily_activity, ledger, and moments', async () => {
+    // Rides on the session user from the full-loop suite (15 calls today).
+    const month = new Date().toISOString().slice(0, 7);
+    const wrapped = await json<{
+      month: string;
+      activeDays: number;
+      requests: number;
+      xpEarned: number;
+      bestStreak: number;
+      moments: number;
+      topModels: Array<{ model: string }>;
+    }>(await apiFetch(`/v1/me/wrapped?month=${month}`));
+
+    expect(wrapped.month).toBe(month);
+    expect(wrapped.activeDays).toBe(1);
+    expect(wrapped.requests).toBe(15);
+    expect(wrapped.xpEarned).toBeGreaterThan(0);
+    expect(wrapped.bestStreak).toBe(1);
+    expect(wrapped.moments).toBeGreaterThanOrEqual(1);
+    expect(wrapped.topModels[0]?.model).toBe('anthropic/claude-sonnet-5');
   });
 });

@@ -2,14 +2,16 @@ import {
   type Db,
   dailyActivity,
   gatewayKeys,
+  moments,
   pushSubscriptions,
   usageEvents,
   userAchievements,
   users,
+  xpLedger,
 } from '@kaiden/db';
 import { generateGatewayKey, hashGatewayKey } from '@kaiden/shared';
 import { XP_CONFIG } from '@kaiden/xp-config';
-import { rankForLevel, xpToReachLevel } from '@kaiden/xp-engine';
+import { diffDays, rankForLevel, xpToReachLevel } from '@kaiden/xp-engine';
 import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Auth } from '../auth';
@@ -205,6 +207,69 @@ export function registerMeRoutes(server: FastifyInstance, deps: Deps): void {
       .delete(pushSubscriptions)
       .where(and(eq(pushSubscriptions.endpoint, endpoint), eq(pushSubscriptions.userId, user.id)));
     return { subscribed: false };
+  });
+
+  server.get('/v1/me/wrapped', async (request, reply) => {
+    const user = await requireUser(request, reply);
+    if (!user) return;
+    const query = request.query as Record<string, string | undefined>;
+    const month = /^\d{4}-\d{2}$/.test(query.month ?? '')
+      ? (query.month as string)
+      : new Date().toISOString().slice(0, 7);
+
+    const days = await deps.db
+      .select()
+      .from(dailyActivity)
+      .where(
+        and(
+          eq(dailyActivity.userId, user.id),
+          sql`${dailyActivity.day}::text LIKE ${`${month}-%`}`,
+        ),
+      )
+      .orderBy(dailyActivity.day);
+
+    const xpRows = await deps.db
+      .select({ total: sql<number>`coalesce(sum(${xpLedger.amount}), 0)::int` })
+      .from(xpLedger)
+      .where(and(eq(xpLedger.userId, user.id), sql`${xpLedger.day}::text LIKE ${`${month}-%`}`));
+
+    const momentRows = await deps.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(moments)
+      .where(and(eq(moments.userId, user.id), sql`${moments.ts}::text LIKE ${`${month}-%`}`));
+
+    const modelDays = new Map<string, number>();
+    let requests = 0;
+    let tokens = 0;
+    let deepSessions = 0;
+    let bestStreak = 0;
+    let run = 0;
+    let previousDay: string | null = null;
+    for (const day of days) {
+      requests += day.requestCount;
+      tokens += day.promptTokens + day.completionTokens;
+      if (day.deepSession) deepSessions += 1;
+      for (const model of day.models) modelDays.set(model, (modelDays.get(model) ?? 0) + 1);
+      run = previousDay !== null && diffDays(day.day, previousDay) === 1 ? run + 1 : 1;
+      bestStreak = Math.max(bestStreak, run);
+      previousDay = day.day;
+    }
+    const topModels = [...modelDays.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([model, count]) => ({ model, days: count }));
+
+    return {
+      month,
+      activeDays: days.length,
+      requests,
+      tokens,
+      deepSessions,
+      bestStreak,
+      xpEarned: xpRows[0]?.total ?? 0,
+      moments: momentRows[0]?.count ?? 0,
+      topModels,
+    };
   });
 
   server.get('/v1/me/onboarding', async (request, reply) => {

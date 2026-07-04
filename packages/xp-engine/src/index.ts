@@ -13,5 +13,6 @@ export type {
   DayState,
   EngineEvent,
   LedgerProposal,
+  MomentProposal,
   UserComputation,
 } from './types';

@@ -39,6 +39,7 @@ export function computeUser(input: ComputeUserInput, config: XpConfig): UserComp
     ledger: [],
     achievements: [],
     days: [],
+    moments: [],
     lastActiveDay: null,
     currentStreak: 0,
     longestStreak: 0,
@@ -69,6 +70,7 @@ export function computeUser(input: ComputeUserInput, config: XpConfig): UserComp
     result.ledger.push(...computed.ledger);
     result.achievements.push(...computed.achievements);
     result.days.push(computed.aggregate);
+    result.moments.push(...computed.moments);
     result.longestStreak = Math.max(result.longestStreak, computed.streak);
 
     for (const provider of computed.aggregate.providers) knownProviders.add(provider);

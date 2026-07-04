@@ -134,6 +134,42 @@ describe('behavior bonuses', () => {
   });
 });
 
+describe('moments', () => {
+  it('emits a deep-session moment with metadata-only draft copy', () => {
+    const events = Array.from({ length: 12 }, (_, i) =>
+      event(new Date(Date.UTC(2026, 6, 1, 10, i)), { sessionHint: 'work', toolUse: i < 2 }),
+    );
+    const result = computeUser({ userId: USER, timezone: 'UTC', events }, XP_CONFIG);
+    const deep = result.moments.find((m) => m.kind === 'deep-session');
+    expect(deep).toBeDefined();
+    expect(deep?.metadata).toMatchObject({ turns: 12, toolCalls: 2 });
+    expect(deep?.draftCopy).toContain('12 turns');
+    // new-model moment for the first claude-sonnet-5 day too
+    expect(result.moments.some((m) => m.kind === 'new-model')).toBe(true);
+  });
+
+  it('upgrades to a marathon moment at 25+ turns (single moment, stable key)', () => {
+    const events = Array.from({ length: 26 }, (_, i) =>
+      event(new Date(Date.UTC(2026, 6, 1, 9, i)), { sessionHint: 'epic' }),
+    );
+    const result = computeUser({ userId: USER, timezone: 'UTC', events }, XP_CONFIG);
+    const sessionMoments = result.moments.filter((m) => m.kind !== 'new-model');
+    expect(sessionMoments).toHaveLength(1);
+    expect(sessionMoments[0]?.kind).toBe('marathon');
+    expect(sessionMoments[0]?.idempotencyKey).toBe(`${USER}/moment/deep/2026-07-01`);
+  });
+
+  it('never leaks anything but metadata into draft copy', () => {
+    const events = Array.from({ length: 12 }, (_, i) =>
+      event(new Date(Date.UTC(2026, 6, 1, 10, i)), { sessionHint: 's' }),
+    );
+    const result = computeUser({ userId: USER, timezone: 'UTC', events }, XP_CONFIG);
+    for (const moment of result.moments) {
+      expect(JSON.stringify(moment)).not.toMatch(/prompt|content|message/i);
+    }
+  });
+});
+
 describe('achievements', () => {
   it('polyglot needs three providers in one day, and is granted once', () => {
     const day = (d: number, provider: string) =>

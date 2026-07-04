@@ -165,6 +165,7 @@ describe('determinism and replay', () => {
       );
       expect(second.ledger).toEqual(first.ledger);
       expect(second.achievements).toEqual(first.achievements);
+      expect(second.moments).toEqual(first.moments);
       expect(second.lifetimeXp).toBe(first.lifetimeXp);
     }
   });

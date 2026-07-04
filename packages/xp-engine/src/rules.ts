@@ -1,6 +1,12 @@
 import type { XpConfig } from '@kaiden/xp-config';
 import { diffDays, localHourOf } from './localday';
-import type { DayComputation, DayState, EngineEvent, LedgerProposal } from './types';
+import type {
+  DayComputation,
+  DayState,
+  EngineEvent,
+  LedgerProposal,
+  MomentProposal,
+} from './types';
 
 /**
  * Stable ledger rule ids — treat as a public contract (stats screens and the
@@ -82,6 +88,7 @@ export function computeDay(
         deepSession: false,
         usageXpAwarded: 0,
       },
+      moments: [],
     };
   }
 
@@ -155,6 +162,45 @@ export function computeDay(
     grant('comeback');
   }
 
+  // --- moments (Phase 2 seed, brief §8): postable metadata-only records
+  const moments: MomentProposal[] = [];
+  if (deepestSession > 0 && deepSession) {
+    const hint = [...turnCounts.entries()].reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+    const sessionEvents = events.filter((event) => event.sessionHint === hint);
+    const sessionModels = [...new Set(sessionEvents.map((e) => `${e.provider}/${e.model}`))].sort();
+    const sessionTools = sessionEvents.filter((e) => e.toolUse).length;
+    const lastTs = sessionEvents[sessionEvents.length - 1]?.ts ?? events[events.length - 1]?.ts;
+    const marathon = deepestSession >= 25;
+    const modelName = sessionModels[0]?.split('/')[1] ?? 'AI';
+    moments.push({
+      kind: marathon ? 'marathon' : 'deep-session',
+      day,
+      ts: lastTs ?? new Date(0),
+      metadata: {
+        turns: deepestSession,
+        models: sessionModels,
+        toolCalls: sessionTools,
+      },
+      draftCopy: marathon
+        ? `Marathon thread — ${deepestSession} turns deep with ${modelName}.`
+        : `Deep session — ${deepestSession} turns with ${modelName}${sessionTools > 0 ? ', tools in play' : ''}.`,
+      idempotencyKey: key(`moment/deep/${day}`),
+    });
+  }
+  for (const model of models) {
+    if (!state.knownModels.has(model)) {
+      const [provider, name] = model.split('/');
+      moments.push({
+        kind: 'new-model',
+        day,
+        ts: events[events.length - 1]?.ts ?? new Date(0),
+        metadata: { provider, model: name },
+        draftCopy: `First run with ${name}.`,
+        idempotencyKey: key(`moment/new-model/${model}`),
+      });
+    }
+  }
+
   return {
     ledger,
     achievements,
@@ -170,5 +216,6 @@ export function computeDay(
       deepSession,
       usageXpAwarded: usageXp,
     },
+    moments,
   };
 }

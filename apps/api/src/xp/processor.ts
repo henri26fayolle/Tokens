@@ -1,4 +1,12 @@
-import { type Db, dailyActivity, usageEvents, userAchievements, users, xpLedger } from '@kaiden/db';
+import {
+  type Db,
+  dailyActivity,
+  moments,
+  usageEvents,
+  userAchievements,
+  users,
+  xpLedger,
+} from '@kaiden/db';
 import { XP_CONFIG, type XpConfig } from '@kaiden/xp-config';
 import {
   computeUser,
@@ -110,6 +118,26 @@ export async function processUserXp(
       .insert(dailyActivity)
       .values(values)
       .onConflictDoUpdate({ target: [dailyActivity.userId, dailyActivity.day], set: values });
+  }
+
+  // Moments upsert (converge-to-latest replay — unlike the append-only
+  // ledger, a mid-day draft legitimately grows as the session does).
+  for (const moment of computed.moments) {
+    const values = {
+      userId,
+      idempotencyKey: moment.idempotencyKey,
+      kind: moment.kind,
+      ts: moment.ts,
+      metadata: moment.metadata,
+      draftCopy: moment.draftCopy,
+    };
+    await db
+      .insert(moments)
+      .values(values)
+      .onConflictDoUpdate({
+        target: moments.idempotencyKey,
+        set: { ts: values.ts, metadata: values.metadata, draftCopy: values.draftCopy },
+      });
   }
 
   // The DB, not the in-memory computation, is authoritative for totals —
