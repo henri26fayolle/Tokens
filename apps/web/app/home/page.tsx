@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ActivityChart } from '../../components/ActivityChart';
 import { Crest } from '../../components/Crest';
+import { FlameIcon } from '../../components/icons';
 import { PushButton } from '../../components/PushButton';
 import { ShareCardButton } from '../../components/ShareCardButton';
 import { TabBar } from '../../components/TabBar';
@@ -194,7 +195,15 @@ export default function HomePage() {
         <div style={{ display: 'flex', justifyContent: 'center', gap: 26, marginBottom: 6 }}>
           <div>
             <div style={{ fontSize: 26, fontWeight: 800 }}>
-              {profile.currentStreak > 0 ? `🔥 ${profile.currentStreak}` : '—'}
+              {profile.currentStreak > 0 ? (
+                <span
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--accent)' }}
+                >
+                  <FlameIcon size={22} /> {profile.currentStreak}
+                </span>
+              ) : (
+                '—'
+              )}
             </div>
             <div className="faint" style={{ fontSize: 12 }}>
               day streak

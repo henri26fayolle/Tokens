@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Crest } from '../../../components/Crest';
+import { CheckIcon, FlameIcon } from '../../../components/icons';
 import { PostCard } from '../../../components/PostCard';
 import { TabBar } from '../../../components/TabBar';
 import { apiDelete, apiGet, apiPost, type PublicProfile } from '../../../lib/api';
@@ -88,7 +89,15 @@ export default function PublicProfilePage() {
         </div>
         <div className="muted" style={{ fontSize: 13 }}>
           Level {profile.level} · {Intl.NumberFormat().format(profile.lifetimeXp)} XP ·{' '}
-          {profile.currentStreak > 0 ? `🔥 ${profile.currentStreak}` : '—'} streak
+          {profile.currentStreak > 0 ? (
+            <>
+              <FlameIcon size={13} style={{ display: 'inline-block', verticalAlign: '-2px' }} />{' '}
+              {profile.currentStreak}
+            </>
+          ) : (
+            '—'
+          )}{' '}
+          streak
         </div>
         <div className="faint" style={{ fontSize: 12, marginTop: 6 }}>
           climbing since {new Date(profile.memberSince).toLocaleDateString()}
@@ -119,7 +128,13 @@ export default function PublicProfilePage() {
             onClick={toggleFollow}
             disabled={busy}
           >
-            {profile.iFollow ? 'Following ✓' : 'Follow'}
+            {profile.iFollow ? (
+              <>
+                Following <CheckIcon size={15} />
+              </>
+            ) : (
+              'Follow'
+            )}
           </button>
         )}
         {profile.isMe && (

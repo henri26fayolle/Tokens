@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CheckIcon } from './icons';
 
 const GATEWAY = process.env.NEXT_PUBLIC_GATEWAY_URL ?? 'http://localhost:4000';
 
@@ -118,7 +119,13 @@ function CopyableBlock({ block }: { block: CopyBlock }) {
       )}
       <pre className="snippet">{block.code}</pre>
       <button type="button" className="btn" style={{ marginTop: 8 }} onClick={copy}>
-        {copied ? '✓ Copied' : 'Copy'}
+        {copied ? (
+          <>
+            <CheckIcon size={16} /> Copied
+          </>
+        ) : (
+          'Copy'
+        )}
       </button>
     </div>
   );

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Crest } from '../../components/Crest';
+import { FlameIcon } from '../../components/icons';
 import { TabBar } from '../../components/TabBar';
 import { apiGet, type Leaderboard, type LeaderboardEntry } from '../../lib/api';
 
@@ -50,7 +51,13 @@ function Row({ entry, meijin }: { entry: LeaderboardEntry; meijin: string | null
         </div>
         <div className="faint" style={{ fontSize: 12 }}>
           {entry.rank} · Lv {entry.level}
-          {entry.currentStreak > 0 ? ` · 🔥 ${entry.currentStreak}` : ''}
+          {entry.currentStreak > 0 && (
+            <>
+              {' · '}
+              <FlameIcon size={12} style={{ display: 'inline-block', verticalAlign: '-2px' }} />{' '}
+              {entry.currentStreak}
+            </>
+          )}
         </div>
       </div>
       <div style={{ fontWeight: 800, fontSize: 15, flexShrink: 0 }}>

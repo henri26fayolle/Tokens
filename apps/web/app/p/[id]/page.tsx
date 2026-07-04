@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { CloseIcon } from '../../../components/icons';
 import { PostCard } from '../../../components/PostCard';
 import { TabBar } from '../../../components/TabBar';
 import { apiDelete, apiGet, apiPost, type CommentItem, type FeedPost } from '../../../lib/api';
@@ -115,7 +116,7 @@ export default function PostPage() {
                   onClick={() => remove(comment.id)}
                   aria-label="Delete comment"
                 >
-                  ✕
+                  <CloseIcon size={16} />
                 </button>
               )}
             </div>

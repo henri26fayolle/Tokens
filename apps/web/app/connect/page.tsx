@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Qr } from '../../components/Qr';
+import { SparkIcon } from '../../components/icons';
 import { TabBar } from '../../components/TabBar';
 import { ToolGuides } from '../../components/ToolGuides';
 import { apiDelete, apiGet, apiPost, type KeyItem, type Onboarding } from '../../lib/api';
@@ -85,7 +86,9 @@ export default function ConnectPage() {
 
       {onboarding?.connected ? (
         <div className="card" style={{ borderColor: 'var(--good)', textAlign: 'center' }}>
-          <div style={{ fontSize: 34 }}>🎉</div>
+          <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--gold)' }}>
+            <SparkIcon size={34} />
+          </div>
           <strong>Connected — first XP earned.</strong>
           <div className="muted" style={{ fontSize: 14, margin: '6px 0 12px' }}>
             {onboarding.eventCount} request{onboarding.eventCount === 1 ? '' : 's'} through the

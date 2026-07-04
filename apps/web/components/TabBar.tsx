@@ -2,28 +2,39 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { ComponentType } from 'react';
+import { FeedIcon, PlusIcon, RanksIcon, StatsIcon, ToriiIcon } from './icons';
 
-const TABS = [
-  { href: '/feed', icon: '📜', label: 'Feed' },
-  { href: '/ranks', icon: '🏔️', label: 'Ranks' },
-  { href: '/post/new', icon: '➕', label: 'Post', accent: true },
-  { href: '/home', icon: '📊', label: 'Stats' },
-  { href: '/connect', icon: '⛩️', label: 'Connect' },
+type Tab = {
+  href: string;
+  Icon: ComponentType<{ size?: number }>;
+  label: string;
+  accent?: boolean;
+};
+
+const TABS: Tab[] = [
+  { href: '/feed', Icon: FeedIcon, label: 'Feed' },
+  { href: '/ranks', Icon: RanksIcon, label: 'Ranks' },
+  { href: '/post/new', Icon: PlusIcon, label: 'Post', accent: true },
+  { href: '/home', Icon: StatsIcon, label: 'Stats' },
+  { href: '/connect', Icon: ToriiIcon, label: 'Connect' },
 ];
 
 export function TabBar() {
   const pathname = usePathname();
   return (
     <nav className="tabbar">
-      {TABS.map((tab) => (
+      {TABS.map(({ href, Icon, label, accent }) => (
         <Link
-          key={tab.href}
-          href={tab.href}
-          className={pathname === tab.href ? 'active' : ''}
-          aria-label={tab.label}
+          key={href}
+          href={href}
+          className={pathname === href ? 'active' : ''}
+          aria-label={label}
         >
-          <span style={tab.accent ? { color: 'var(--accent)' } : undefined}>{tab.icon}</span>
-          {tab.label}
+          <span style={accent ? { color: 'var(--accent)' } : undefined}>
+            <Icon size={23} />
+          </span>
+          {label}
         </Link>
       ))}
     </nav>

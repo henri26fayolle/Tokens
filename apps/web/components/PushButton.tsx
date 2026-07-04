@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '../lib/api';
+import { BellIcon } from './icons';
 
 type PushState = 'unsupported' | 'idle' | 'subscribed' | 'denied' | 'busy';
 
@@ -64,7 +65,7 @@ export function PushButton() {
   }
   return (
     <button type="button" className="btn" onClick={enable} disabled={state === 'busy'}>
-      🔔 Enable streak notifications
+      <BellIcon size={17} /> Enable streak notifications
     </button>
   );
 }

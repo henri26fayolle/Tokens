@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { apiDelete, apiPost, type FeedPost } from '../lib/api';
+import { ArrowUpRightIcon, CheckIcon, CommentIcon, CopyIcon, FlameIcon, HeartIcon } from './icons';
 
 function timeAgo(iso: string): string {
   const seconds = Math.max(1, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
@@ -88,9 +89,17 @@ export function PostCard({
           href={post.url}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: 'var(--accent)', fontSize: 14, fontWeight: 600 }}
+          style={{
+            color: 'var(--accent)',
+            fontSize: 14,
+            fontWeight: 600,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
         >
-          {domainOf(post.url)} ↗
+          {domainOf(post.url)}
+          <ArrowUpRightIcon size={14} />
         </a>
       )}
       <p className="muted" style={{ fontSize: 14, lineHeight: 1.5, margin: '8px 0 12px' }}>
@@ -98,7 +107,9 @@ export function PostCard({
       </p>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
         {typeof post.chips.streak === 'number' && post.chips.streak > 0 && (
-          <span className="chip">🔥 {post.chips.streak}-day streak</span>
+          <span className="chip">
+            <FlameIcon size={13} /> {post.chips.streak}-day streak
+          </span>
         )}
         {models.map((model) => (
           <span key={model} className="chip">
@@ -120,7 +131,7 @@ export function PostCard({
           }}
           onClick={toggleKudos}
         >
-          {kudos ? '❤️' : '🤍'} {kudosCount}
+          <HeartIcon size={16} filled={kudos} /> {kudosCount}
         </button>
         {linkComments && (
           <Link
@@ -128,7 +139,7 @@ export function PostCard({
             className="btn"
             style={{ width: 'auto', padding: '8px 14px' }}
           >
-            💬 {post.commentCount}
+            <CommentIcon size={16} /> {post.commentCount}
           </Link>
         )}
         {post.recipe && (
@@ -138,7 +149,15 @@ export function PostCard({
             style={{ width: 'auto', padding: '8px 14px' }}
             onClick={copyRecipe}
           >
-            {copied ? '✓ Recipe copied' : `📋 Copy recipe · ${post.copyCount}`}
+            {copied ? (
+              <>
+                <CheckIcon size={16} /> Recipe copied
+              </>
+            ) : (
+              <>
+                <CopyIcon size={16} /> Copy recipe · {post.copyCount}
+              </>
+            )}
           </button>
         )}
       </div>

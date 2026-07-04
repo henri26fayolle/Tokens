@@ -156,9 +156,9 @@ a {
 }
 
 .tabbar a span {
-  display: block;
-  font-size: 20px;
-  margin-bottom: 2px;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
 }
 
 pre.snippet {
