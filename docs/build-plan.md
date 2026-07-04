@@ -16,7 +16,8 @@ Milestones for Phase 1, in dependency order. Each has a definition of done; a mi
 ## Phase 2 status
 
 - **P2 v1 ✅ (2026-07-04)** — the showcase layer, vibe-coder framing (user decision: legible artifacts over developer workflow files; receipts stay the differentiator). Posts with verified metadata-only chips, public feed (`/feed`), <30s composer (`/post/new`), kudos (self-kudos blocked, XP idempotent per post+user across toggles), copy-the-recipe (+15 to author), public profiles (`/@handle` → `/u/[handle]`), soft delete. Social XP live via `apps/api/src/xp/social.ts` into the same ledger (rule ids: waza-published / kudos-received / waza-copied). Config v2026.07.2.
-- **P2 next**: comments, follows + following feed, kudos push notifications, leaderboards (seasonal, per brief), post-from-moment UI (composer prefilled from a detected moment), URL previews/images, moderation beyond soft-delete (report button before any open signup), invite mechanics for the alpha.
+- **P2 comments ✅ (2026-07-04)** — flat (no threads, Strava model), deliberately NO XP either direction (farmable; ledger-level test enforces), 1000-char/20-day caps, soft-delete by comment author OR post owner (host moderation), author push on non-self comments → deep-links to `/p/[id]` detail page. Migration 0005.
+- **P2 next**: follows + following feed, kudos push notifications, leaderboards (seasonal, per brief), post-from-moment UI (composer prefilled from a detected moment), URL previews/images, moderation beyond soft-delete (report button before any open signup), invite mechanics for the alpha.
 
 Also open: user dogfooding + real-phone checks; pre-launch checklist (provider ToS legal review, trademark/domain + Japanese vocab check, email provider for verification/magic links).
 
