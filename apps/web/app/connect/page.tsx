@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Qr } from '../../components/Qr';
-import { Snippets } from '../../components/Snippets';
 import { TabBar } from '../../components/TabBar';
+import { ToolGuides } from '../../components/ToolGuides';
 import { apiDelete, apiGet, apiPost, type KeyItem, type Onboarding } from '../../lib/api';
 import { useSession } from '../../lib/session';
 
@@ -188,9 +188,9 @@ export default function ConnectPage() {
 
       <section className="card">
         <div className="muted" style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
-          2 · Point your SDK at the gateway
+          2 · Pick your tool
         </div>
-        <Snippets kaidenKey={freshKey} />
+        <ToolGuides kaidenKey={freshKey} />
       </section>
 
       <section className="card" style={{ textAlign: 'center' }}>

@@ -274,6 +274,34 @@ describe('openai passthrough', () => {
   });
 });
 
+describe('key-in-path form (tools without custom headers)', () => {
+  it('authenticates via /k/<key>/… and strips the key before going upstream', async () => {
+    const response = await fetch(`${gatewayUrl}/k/${TEST_KEY}/anthropic/v1/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': 'sk-ant-test-dummy' },
+      body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 8, messages: [] }),
+    });
+    expect(response.status).toBe(200);
+
+    const seen = mock.lastRequest();
+    expect(seen?.path).toBe('/v1/messages');
+    expect(JSON.stringify(seen?.headers)).not.toContain(TEST_KEY);
+
+    await vi.waitFor(() => expect(events.length).toBe(1));
+    expect(events[0]?.provider).toBe('anthropic');
+  });
+
+  it('rejects a wrong path key without contacting the upstream', async () => {
+    const response = await fetch(`${gatewayUrl}/k/kd_live_nope/openai/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    });
+    expect(response.status).toBe(401);
+    expect(mock.requests.length).toBe(0);
+  });
+});
+
 describe('plain passthrough', () => {
   it('proxies non-extractable endpoints without recording events', async () => {
     const response = await fetch(`${gatewayUrl}/openai/v1/models`, {

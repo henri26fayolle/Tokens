@@ -96,13 +96,23 @@ describe('privacy: nothing content-shaped escapes the request path', () => {
       }),
     }).then((response) => response.text());
 
+    // Key-in-path form: the kaiden key rides in the URL, which IS logged —
+    // redaction must keep the key itself out.
+    await fetch(`${gatewayUrl}/k/${TEST_KEY}/anthropic/v1/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': PROVIDER_KEY },
+      body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 8, messages: [] }),
+    }).then((response) => response.text());
+
     // The traffic itself carried the sentinels end-to-end…
-    expect(events.length).toBeGreaterThanOrEqual(3);
+    expect(events.length).toBeGreaterThanOrEqual(4);
 
     // …but neither logs nor stored metadata may contain any of them.
     const everything = logs.lines.join('') + JSON.stringify(events);
     expect(everything).not.toContain(SENTINEL_PROMPT);
     expect(everything).not.toContain(SENTINEL_RESPONSE);
     expect(everything).not.toContain(PROVIDER_KEY);
+    expect(everything).not.toContain(TEST_KEY);
+    expect(logs.lines.join('')).toContain('/k/[redacted]/');
   });
 });

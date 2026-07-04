@@ -1,4 +1,9 @@
-import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import Fastify, {
+  type FastifyBaseLogger,
+  type FastifyInstance,
+  type FastifyReply,
+  type FastifyRequest,
+} from 'fastify';
 import type { KeyResolver } from './auth';
 import type { EventSink } from './events';
 import { proxyRequest } from './proxy';
@@ -49,6 +54,33 @@ export function registerGatewayRoutes(server: FastifyInstance, options: GatewayO
       eventSink,
     }),
   );
+
+  /**
+   * Key-in-path form for tools that allow a base URL but not custom headers
+   * (Cursor, OpenWebUI, …): base URL = /k/<kaiden-key>/<provider>[/v1].
+   * The key segment is equivalent to the X-Kaiden-Key header: stripped before
+   * anything goes upstream, and REDACTED from logs (see redactKeyInPath —
+   * the privacy suite asserts it never appears).
+   */
+  const pathKeyHandler =
+    (provider: 'anthropic' | 'openai') => (request: FastifyRequest, reply: FastifyReply) => {
+      const { key } = request.params as { key: string };
+      request.headers['x-kaiden-key'] = key;
+      return proxyRequest(request, reply, {
+        provider,
+        prefix: `/k/${key}/${provider}`,
+        upstreamOrigin: options.upstreams[provider],
+        keyResolver: options.keyResolver,
+        eventSink,
+      });
+    };
+  server.all('/k/:key/anthropic/*', pathKeyHandler('anthropic'));
+  server.all('/k/:key/openai/*', pathKeyHandler('openai'));
+}
+
+/** Kaiden keys may ride in the URL path (/k/<key>/…) — never let them reach logs. */
+export function redactKeyInPath(url: string): string {
+  return url.replace(/\/k\/[^/]+/, '/k/[redacted]');
 }
 
 export function buildServer(options: GatewayOptions) {
@@ -56,6 +88,16 @@ export function buildServer(options: GatewayOptions) {
     logger: {
       level: options.logLevel ?? process.env.LOG_LEVEL ?? 'info',
       ...(options.loggerStream ? { stream: options.loggerStream } : {}),
+      serializers: {
+        req(request: FastifyRequest) {
+          return {
+            method: request.method,
+            url: redactKeyInPath(request.url),
+            host: request.hostname,
+            remoteAddress: request.ip,
+          };
+        },
+      },
     },
     bodyLimit: 32 * 1024 * 1024,
     // Behind Railway's proxy: x-forwarded-* is the truth.
