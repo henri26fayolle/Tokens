@@ -485,6 +485,51 @@ describe('social: posts, kudos, copies', () => {
   });
 });
 
+describe('leaderboard', () => {
+  it('ranks earners, crowns the Meijin, and leaves pure spectators unranked', async () => {
+    // A spectator who signs up but never connects earns nothing.
+    const signup = await fetch(`${apiUrl}/api/auth/sign-up/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: 'watcher@kaiden.social',
+        password: 'just-here-to-watch',
+        name: 'Watcher',
+        handle: 'watcher',
+        timezone: 'UTC',
+      }),
+    });
+    const watcherCookie = signup.headers
+      .getSetCookie()
+      .map((c) => c.split(';')[0])
+      .join('; ');
+
+    // Public board: henri (the only earner) is #1 and wears the Meijin title.
+    const board = await json<{
+      meijin: string | null;
+      entries: Array<{ position: number; handle: string; xp: number }>;
+    }>(await fetch(`${apiUrl}/v1/leaderboard`));
+    expect(board.meijin).toBe('henri');
+    expect(board.entries[0]).toMatchObject({ position: 1, handle: 'henri' });
+    // Only XP > 0 appears — no zero-XP accounts padding the ladder.
+    expect(board.entries.every((entry) => entry.xp > 0)).toBe(true);
+    expect(board.entries.some((entry) => entry.handle === 'watcher')).toBe(false);
+
+    // The earner sees themselves ranked #1…
+    const henriView = await json<{ me: { position: number | null } | null }>(
+      await apiFetch('/v1/leaderboard'),
+    );
+    expect(henriView.me?.position).toBe(1);
+
+    // …the spectator sees an honest "unranked" (kudos and copies they gave
+    // earned the AUTHOR, never them — giving isn't gaming).
+    const watcherView = await json<{ me: { position: number | null } | null }>(
+      await fetch(`${apiUrl}/v1/leaderboard`, { headers: { cookie: watcherCookie } }),
+    );
+    expect(watcherView.me?.position).toBeNull();
+  });
+});
+
 describe('wrapped', () => {
   it('aggregates the month from daily_activity, ledger, and moments', async () => {
     // Rides on the session user from the full-loop suite (15 calls today).

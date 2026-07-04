@@ -118,6 +118,26 @@ export interface CommentItem {
   author: { handle: string; level: number; rank: string };
 }
 
+export interface LeaderboardEntry {
+  position: number | null;
+  handle: string;
+  level: number;
+  rank: string;
+  xp: number;
+  lifetimeXp: number;
+  seasonXp: number;
+  currentStreak: number;
+  isMe?: boolean;
+}
+
+export interface Leaderboard {
+  board: 'season' | 'lifetime';
+  season: string;
+  meijin: string | null;
+  entries: LeaderboardEntry[];
+  me: LeaderboardEntry | null;
+}
+
 export interface PublicProfile {
   handle: string;
   level: number;

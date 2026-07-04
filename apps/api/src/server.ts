@@ -2,6 +2,7 @@ import type { Db } from '@kaiden/db';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import { type Auth, createAuth } from './auth';
 import { PushSender, resolveVapidKeys } from './push';
+import { registerLeaderboardRoutes } from './routes/leaderboard';
 import { registerMeRoutes } from './routes/me';
 import { registerPostRoutes } from './routes/posts';
 
@@ -54,6 +55,7 @@ export function buildServer(options: ApiOptions) {
 
   registerMeRoutes(server, { db: options.db, auth, push });
   registerPostRoutes(server, { db: options.db, auth, push });
+  registerLeaderboardRoutes(server, { db: options.db, auth });
 
   return server;
 }
