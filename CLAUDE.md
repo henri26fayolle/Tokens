@@ -1,8 +1,12 @@
 # Kaiden
 
-Strava for AI users: a metadata-only gateway proxy in front of AI provider APIs feeds an XP/rank progression system (kyū/dan ladder) with a social layer to follow. Currently pre-code: docs only.
+Strava for AI users: a metadata-only gateway proxy in front of AI provider APIs feeds an XP/rank progression system (kyū/dan ladder) with a social layer to follow.
 
-**Read first:** [kaiden-product-brief.md](kaiden-product-brief.md) (product truth) · [docs/architecture.md](docs/architecture.md) (system design) · [docs/build-plan.md](docs/build-plan.md) (milestones M0–M5).
+**Read first:** [kaiden-product-brief.md](kaiden-product-brief.md) (product truth) · [docs/architecture.md](docs/architecture.md) (system design) · [docs/build-plan.md](docs/build-plan.md) (milestones + **current status**).
+
+## Orientation (for a fresh session)
+
+M0–M2 shipped: gateway (apps/gateway) proxies Anthropic/OpenAI and records metadata events; the pure XP engine (packages/xp-engine) turns events into an append-only ledger by full deterministic replay — `computeUser` is the only XP math entry point, and `apps/api/src/xp/processor.ts` is the only writer of xp_ledger. Ledger rule ids and the "1-XP usage rows" determinism trick are documented at the top of packages/xp-engine/src/rules.ts. XP processing is manual for now: `pnpm --filter @kaiden/api xp:process <handle>`. Deploys: push to main → Vercel builds apps/web → kaiden.social. pnpm on this machine only works as `corepack pnpm …` (root-owned ~/.npm cache breaks npm).
 
 ## Hard rules (from the brief — never trade these away)
 

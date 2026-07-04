@@ -26,6 +26,9 @@ importers:
       '@kaiden/xp-engine':
         specifier: workspace:*
         version: link:../../packages/xp-engine
+      drizzle-orm:
+        specifier: ^0.44.7
+        version: 0.44.7(@types/pg@8.20.0)(pg@8.22.0)
       fastify:
         specifier: ^5.4.0
         version: 5.9.0

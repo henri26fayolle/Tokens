@@ -25,6 +25,8 @@ export interface XpConfig {
     bonusCap: number;
   };
   behavior: {
+    /** One-time: first event ever through the gateway (activation reward). */
+    connectedXp: number;
     firstNewProviderXp: number;
     firstNewModelXp: number;
     multiProviderDayXp: number;
@@ -55,7 +57,7 @@ export interface XpConfig {
 }
 
 export const XP_CONFIG: XpConfig = {
-  version: '2026.07.0',
+  version: '2026.07.1',
   season: {
     current: '2026Q3',
   },
@@ -64,9 +66,13 @@ export const XP_CONFIG: XpConfig = {
     activeDayXp: 30,
     /** log-scaled usage XP ceiling (brief: 60 XP/day) */
     usageXpDailyCap: 60,
-    /** usageXp = min(cap, round(scale × ln(1 + totalTokens / tokenUnit))) ⚠ calibrate */
-    usageXpScale: 6,
-    usageXpTokenUnit: 1000,
+    /**
+     * usageXp = min(cap, round(scale × ln(1 + totalTokens / tokenUnit)))
+     * M2 calibration: 50k tokens/day (real enthusiast) ≈ 42 XP; the 60 cap
+     * needs ~450k tokens; a 10M-token bot pins the cap. See simulation tests.
+     */
+    usageXpScale: 8,
+    usageXpTokenUnit: 250,
     /** hard ceiling on all usage-derived XP per day; streak bonus sits OUTSIDE this */
     usageHardCap: 150,
   },
@@ -77,6 +83,12 @@ export const XP_CONFIG: XpConfig = {
     bonusCap: 60,
   },
   behavior: {
+    /**
+     * M2 calibration: without this, a realistic single-provider first session
+     * peaks ~187 XP — short of the 200 needed for the brief's "level 2 in the
+     * first session" target. Rewarding completed activation closes the gap.
+     */
+    connectedXp: 25,
     firstNewProviderXp: 40,
     firstNewModelXp: 40,
     /** max once/day */

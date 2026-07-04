@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "xp:process": "tsx scripts/process-xp.ts"
   },
   "dependencies": {
     "@kaiden/db": "workspace:*",
     "@kaiden/shared": "workspace:*",
     "@kaiden/xp-config": "workspace:*",
     "@kaiden/xp-engine": "workspace:*",
+    "drizzle-orm": "^0.44.7",
     "fastify": "^5.4.0"
   },
   "devDependencies": {
