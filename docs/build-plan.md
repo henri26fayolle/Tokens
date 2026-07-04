@@ -13,7 +13,12 @@ Milestones for Phase 1, in dependency order. Each has a definition of done; a mi
 
 **Phase 1 is done.** Post-M5 polish: key-in-path gateway auth (`/k/<key>/<provider>/…`) for header-less tools + tool-first connect guides (Claude Code, Cursor, OpenWebUI, Python, TS, curl) — the gateway-friction mitigation from brief §13. Path keys are log-redacted (`/k/[redacted]/`), privacy-suite enforced.
 
-Next: user dogfoods (real-phone signup, route real usage, watch Goodhart), then the pre-launch checklist (provider ToS legal review, trademark/domain + Japanese vocab check, email provider for verification/magic links), then Phase 2 (feed, kudos, waza).
+## Phase 2 status
+
+- **P2 v1 ✅ (2026-07-04)** — the showcase layer, vibe-coder framing (user decision: legible artifacts over developer workflow files; receipts stay the differentiator). Posts with verified metadata-only chips, public feed (`/feed`), <30s composer (`/post/new`), kudos (self-kudos blocked, XP idempotent per post+user across toggles), copy-the-recipe (+15 to author), public profiles (`/@handle` → `/u/[handle]`), soft delete. Social XP live via `apps/api/src/xp/social.ts` into the same ledger (rule ids: waza-published / kudos-received / waza-copied). Config v2026.07.2.
+- **P2 next**: comments, follows + following feed, kudos push notifications, leaderboards (seasonal, per brief), post-from-moment UI (composer prefilled from a detected moment), URL previews/images, moderation beyond soft-delete (report button before any open signup), invite mechanics for the alpha.
+
+Also open: user dogfooding + real-phone checks; pre-launch checklist (provider ToS legal review, trademark/domain + Japanese vocab check, email provider for verification/magic links).
 
 ## M0 — Skeleton
 
