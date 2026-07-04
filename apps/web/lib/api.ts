@@ -105,9 +105,17 @@ export interface FeedPost {
   chips: PostChips;
   kudosCount: number;
   copyCount: number;
+  commentCount: number;
   createdAt: string;
   author: { handle: string; level: number; rank: string };
   myKudos: boolean;
+}
+
+export interface CommentItem {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: { handle: string; level: number; rank: string };
 }
 
 export interface PublicProfile {

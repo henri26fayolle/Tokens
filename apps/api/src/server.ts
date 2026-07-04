@@ -53,7 +53,7 @@ export function buildServer(options: ApiOptions) {
   });
 
   registerMeRoutes(server, { db: options.db, auth, push });
-  registerPostRoutes(server, { db: options.db, auth });
+  registerPostRoutes(server, { db: options.db, auth, push });
 
   return server;
 }

@@ -38,6 +38,7 @@ export const posts = pgTable(
     momentId: uuid('moment_id'),
     kudosCount: integer('kudos_count').notNull().default(0),
     copyCount: integer('copy_count').notNull().default(0),
+    commentCount: integer('comment_count').notNull().default(0),
     published: boolean('published').notNull().default(true),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -57,6 +58,29 @@ export const kudos = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.postId, t.userId] })],
+);
+
+/**
+ * Flat (unthreaded) comments — communication, deliberately NO XP in either
+ * direction (instantly farmable otherwise). User-authored publication
+ * content, same category as post bodies. Soft-deletable by the comment
+ * author or the post owner (host moderation, Strava-style).
+ */
+export const comments = pgTable(
+  'comments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    postId: uuid('post_id')
+      .notNull()
+      .references(() => posts.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    body: text('body').notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('comments_post_created_idx').on(t.postId, t.createdAt)],
 );
 
 export const postCopies = pgTable(

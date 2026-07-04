@@ -422,6 +422,54 @@ describe('social: posts, kudos, copies', () => {
     expect(authorAfter.lifetimeXp).toBe(authorBefore.lifetimeXp + 15);
   });
 
+  it('comments: flow, moderation rights, and strictly no XP', async () => {
+    const authorBefore = await json<{ lifetimeXp: number }>(await apiFetch('/v1/me/profile'));
+
+    // Bob asks, Henri (author) replies — both fine; no push for self-comment.
+    const bobComment = await bobFetch(`/v1/posts/${postId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body: 'How did the gateway handle streaming?' }),
+    });
+    expect(bobComment.status).toBe(201);
+    const bobCommentBody = await json<{ id: string }>(bobComment);
+    const henriReply = await apiFetch(`/v1/posts/${postId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body: 'Byte-identical SSE passthrough with a frame parser.' }),
+    });
+    expect(henriReply.status).toBe(201);
+    const henriReplyBody = await json<{ id: string }>(henriReply);
+
+    // Public list, ascending, with author ranks.
+    const list = await json<{ comments: Array<{ id: string; author: { handle: string } }> }>(
+      await fetch(`${apiUrl}/v1/posts/${postId}/comments`),
+    );
+    expect(list.comments.map((c) => c.author.handle)).toEqual(['bob', 'henri']);
+
+    const detail = await json<{ commentCount: number }>(
+      await fetch(`${apiUrl}/v1/posts/${postId}`),
+    );
+    expect(detail.commentCount).toBe(2);
+
+    // Bob cannot delete Henri's comment (neither author nor post owner)…
+    expect((await bobFetch(`/v1/comments/${henriReplyBody.id}`, { method: 'DELETE' })).status).toBe(
+      404,
+    );
+    // …but Henri, as post owner, can moderate Bob's comment away.
+    expect((await apiFetch(`/v1/comments/${bobCommentBody.id}`, { method: 'DELETE' })).status).toBe(
+      200,
+    );
+    const afterModeration = await json<{ comments: unknown[] }>(
+      await fetch(`${apiUrl}/v1/posts/${postId}/comments`),
+    );
+    expect(afterModeration.comments).toHaveLength(1);
+
+    // Comments never move the economy, in either direction.
+    const authorAfter = await json<{ lifetimeXp: number }>(await apiFetch('/v1/me/profile'));
+    expect(authorAfter.lifetimeXp).toBe(authorBefore.lifetimeXp);
+    const ledger = await db.select().from(schema.xpLedger);
+    expect(ledger.some((row) => row.ruleId.includes('comment'))).toBe(false);
+  });
+
   it('public profiles show rank, achievements, and posts', async () => {
     const response = await fetch(`${apiUrl}/v1/users/henri`);
     expect(response.status).toBe(200);

@@ -24,10 +24,12 @@ export function PostCard({
   post,
   loggedIn,
   showAuthor = true,
+  linkComments = true,
 }: {
   post: FeedPost;
   loggedIn: boolean;
   showAuthor?: boolean;
+  linkComments?: boolean;
 }) {
   const [kudos, setKudos] = useState(post.myKudos);
   const [kudosCount, setKudosCount] = useState(post.kudosCount);
@@ -120,6 +122,15 @@ export function PostCard({
         >
           {kudos ? '❤️' : '🤍'} {kudosCount}
         </button>
+        {linkComments && (
+          <Link
+            href={`/p/${post.id}`}
+            className="btn"
+            style={{ width: 'auto', padding: '8px 14px' }}
+          >
+            💬 {post.commentCount}
+          </Link>
+        )}
         {post.recipe && (
           <button
             type="button"

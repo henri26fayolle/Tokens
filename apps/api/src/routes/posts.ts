@@ -1,4 +1,5 @@
 import {
+  comments,
   type Db,
   dailyActivity,
   kudos,
@@ -10,18 +11,28 @@ import {
 } from '@kaiden/db';
 import { XP_CONFIG } from '@kaiden/xp-config';
 import { rankForLevel } from '@kaiden/xp-engine';
-import { and, desc, eq, gt, inArray, isNull, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, lt, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Auth } from '../auth';
+import type { PushSender } from '../push';
 import { awardSocialXp } from '../xp/social';
 import { makeOptionalUser, makeRequireUser } from './session';
 
 interface Deps {
   db: Db;
   auth: Auth;
+  push: PushSender;
 }
 
-const LIMITS = { title: 80, body: 500, recipe: 4000, url: 500, postsPerDay: 5 } as const;
+const LIMITS = {
+  title: 80,
+  body: 500,
+  recipe: 4000,
+  url: 500,
+  postsPerDay: 5,
+  comment: 1000,
+  commentsPerDay: 20,
+} as const;
 
 function parseJsonBody(request: FastifyRequest): Record<string, unknown> {
   if (!Buffer.isBuffer(request.body) || request.body.length === 0) return {};
@@ -70,6 +81,7 @@ function toFeedPost(
     chips: post.chips,
     kudosCount: post.kudosCount,
     copyCount: post.copyCount,
+    commentCount: post.commentCount,
     createdAt: post.createdAt,
     author,
     myKudos,
@@ -197,6 +209,137 @@ export function registerPostRoutes(server: FastifyInstance, deps: Deps): void {
         false,
       ),
     );
+  });
+
+  server.get('/v1/posts/:id', async (request, reply) => {
+    const me = await optionalUser(request);
+    const { id } = request.params as { id: string };
+    const [row] = await deps.db
+      .select({ post: posts, handle: users.handle, level: users.level })
+      .from(posts)
+      .innerJoin(users, eq(posts.userId, users.id))
+      .where(and(eq(posts.id, id), isNull(posts.deletedAt)))
+      .limit(1);
+    if (!row) return reply.code(404).send({ error: 'not_found' });
+    let myKudos = false;
+    if (me) {
+      const mine = await deps.db
+        .select({ postId: kudos.postId })
+        .from(kudos)
+        .where(and(eq(kudos.postId, id), eq(kudos.userId, me.id)))
+        .limit(1);
+      myKudos = mine.length > 0;
+    }
+    return toFeedPost(
+      row.post,
+      { handle: row.handle, level: row.level, rank: rankForLevel(row.level, XP_CONFIG) },
+      myKudos,
+    );
+  });
+
+  server.get('/v1/posts/:id/comments', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const [post] = await deps.db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(and(eq(posts.id, id), isNull(posts.deletedAt)))
+      .limit(1);
+    if (!post) return reply.code(404).send({ error: 'not_found' });
+    const rows = await deps.db
+      .select({ comment: comments, handle: users.handle, level: users.level })
+      .from(comments)
+      .innerJoin(users, eq(comments.userId, users.id))
+      .where(and(eq(comments.postId, id), isNull(comments.deletedAt)))
+      .orderBy(asc(comments.createdAt))
+      .limit(200);
+    return {
+      comments: rows.map((row) => ({
+        id: row.comment.id,
+        body: row.comment.body,
+        createdAt: row.comment.createdAt,
+        author: {
+          handle: row.handle,
+          level: row.level,
+          rank: rankForLevel(row.level, XP_CONFIG),
+        },
+      })),
+    };
+  });
+
+  server.post('/v1/posts/:id/comments', async (request, reply) => {
+    const user = await requireUser(request, reply);
+    if (!user) return;
+    const { id } = request.params as { id: string };
+    const body = cleanString(parseJsonBody(request).body, LIMITS.comment);
+    if (!body) return reply.code(400).send({ error: 'comment_body_required' });
+
+    const [post] = await deps.db
+      .select()
+      .from(posts)
+      .where(and(eq(posts.id, id), isNull(posts.deletedAt)))
+      .limit(1);
+    if (!post) return reply.code(404).send({ error: 'not_found' });
+
+    const since = new Date(Date.now() - 86_400_000);
+    const [recent] = await deps.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(comments)
+      .where(and(eq(comments.userId, user.id), gt(comments.createdAt, since)));
+    if ((recent?.count ?? 0) >= LIMITS.commentsPerDay) {
+      return reply.code(429).send({ error: 'daily_comment_limit' });
+    }
+
+    const [created] = await deps.db
+      .insert(comments)
+      .values({ postId: post.id, userId: user.id, body })
+      .returning();
+    if (!created) return reply.code(500).send({ error: 'comment_failed' });
+    await deps.db
+      .update(posts)
+      .set({ commentCount: sql`${posts.commentCount} + 1` })
+      .where(eq(posts.id, post.id));
+
+    // The tap on the shoulder: authors hear about every comment but their own.
+    // Comments carry NO XP by design — communication, not score.
+    if (post.userId !== user.id) {
+      deps.push
+        .send(post.userId, {
+          title: `@${user.handle} commented on your waza`,
+          body: body.length > 100 ? `${body.slice(0, 100)}…` : body,
+          url: `/p/${post.id}`,
+        })
+        .catch(() => null);
+    }
+
+    return reply.code(201).send({
+      id: created.id,
+      body: created.body,
+      createdAt: created.createdAt,
+      author: { handle: user.handle },
+    });
+  });
+
+  server.delete('/v1/comments/:id', async (request, reply) => {
+    const user = await requireUser(request, reply);
+    if (!user) return;
+    const { id } = request.params as { id: string };
+    const [row] = await deps.db
+      .select({ comment: comments, postOwnerId: posts.userId })
+      .from(comments)
+      .innerJoin(posts, eq(comments.postId, posts.id))
+      .where(and(eq(comments.id, id), isNull(comments.deletedAt)))
+      .limit(1);
+    if (!row) return reply.code(404).send({ error: 'not_found' });
+    // Comment author or post owner (host moderation) — nobody else.
+    if (row.comment.userId !== user.id && row.postOwnerId !== user.id) {
+      return reply.code(404).send({ error: 'not_found' });
+    }
+    await deps.db.update(comments).set({ deletedAt: new Date() }).where(eq(comments.id, id));
+    await deps.db
+      .update(posts)
+      .set({ commentCount: sql`greatest(${posts.commentCount} - 1, 0)` })
+      .where(eq(posts.id, row.comment.postId));
+    return { deleted: true };
   });
 
   server.delete('/v1/posts/:id', async (request, reply) => {
