@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
 import { type Db, findActiveGatewayKeyByHash, touchGatewayKey } from '@kaiden/db';
+import { hashGatewayKey } from '@kaiden/shared';
 
 export interface Principal {
   userId: string;
@@ -7,10 +7,6 @@ export interface Principal {
 
 export interface KeyResolver {
   resolve(key: string): Promise<Principal | null>;
-}
-
-export function hashKey(key: string): string {
-  return createHash('sha256').update(key).digest('hex');
 }
 
 interface CacheEntry {
@@ -33,7 +29,7 @@ export class DbKeyResolver implements KeyResolver {
   ) {}
 
   async resolve(key: string): Promise<Principal | null> {
-    const hash = hashKey(key);
+    const hash = hashGatewayKey(key);
     const cached = this.cache.get(hash);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.userId ? { userId: cached.userId } : null;

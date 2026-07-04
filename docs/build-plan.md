@@ -7,8 +7,9 @@ Milestones for Phase 1, in dependency order. Each has a definition of done; a mi
 - **M0 ✅** — monorepo, schema + migration `0000`, CI. Deployed: web on Vercel (kaiden.social, auto-deploy from main).
 - **M1 ✅** — gateway passthrough live-verified against real api.anthropic.com. Dev mode: `KAIDEN_DEV_KEY=… pnpm --filter @kaiden/gateway dev`.
 - **M2 ✅ (code + tests)** — pure engine in `packages/xp-engine` (`computeUser` = full deterministic replay; rule ids + the 1-XP-usage-row rationale documented in `src/rules.ts`); processor + CLI in `apps/api` (`pnpm --filter @kaiden/api xp:process <handle>|--all`). Config calibrated to v2026.07.1 (usage curve scale 8/unit 250, new one-time `connected` 25 XP). **Open:** Docker has never been up on the dev machine — `db:migrate`, `seed:dev`, and one processor run against live Postgres remain unexercised (everything is covered by pure tests; the drizzle calls are the only untested surface).
-- **M3 ⬜ next** — accounts + API. Note: the XP processor currently runs manually; M3 should add the trigger (post-event nudge or short-interval cron) so the first-session "app lights up" moment works.
-- **M4 ⬜**, **M5 ⬜**.
+- **M3 ✅** — better-auth (email+password always on; GitHub OAuth env-gated on GITHUB_CLIENT_ID/SECRET; magic link deferred to M4 pending an email provider) mounted on Fastify at `/api/auth/*`; `/v1/me/*` routes: profile, stats, achievements, keys mint/list/revoke, `POST xp/process`, onboarding status (polling — SSE deferred to M4). XP trigger: 60s sweep in the api (XP_PROCESS_INTERVAL_MS). **The DoD runs as a test:** apps/api/src/integration.test.ts drives signup → key → real gateway → XP → profile against PGlite (in-process Postgres, migrations applied) — this also closed the old "never ran against a live DB" gap; Docker is now only needed for actually running locally, not for coverage. Caveats: key revocation takes effect within the gateway's 60s cache TTL; single `users` table serves auth + game profile.
+- **M4 ⬜ next** — the PWA: onboarding handoff, stats screen, push, share cards. Needs: CORS (`@fastify/cors`) + cookie config for web:3000 → api:4000, and hosting decision for gateway + api.
+- **M5 ⬜**.
 
 ## M0 — Skeleton
 

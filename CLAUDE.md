@@ -6,7 +6,7 @@ Strava for AI users: a metadata-only gateway proxy in front of AI provider APIs 
 
 ## Orientation (for a fresh session)
 
-M0–M2 shipped: gateway (apps/gateway) proxies Anthropic/OpenAI and records metadata events; the pure XP engine (packages/xp-engine) turns events into an append-only ledger by full deterministic replay — `computeUser` is the only XP math entry point, and `apps/api/src/xp/processor.ts` is the only writer of xp_ledger. Ledger rule ids and the "1-XP usage rows" determinism trick are documented at the top of packages/xp-engine/src/rules.ts. XP processing is manual for now: `pnpm --filter @kaiden/api xp:process <handle>`. Deploys: push to main → Vercel builds apps/web → kaiden.social. pnpm on this machine only works as `corepack pnpm …` (root-owned ~/.npm cache breaks npm).
+M0–M3 shipped: gateway (apps/gateway) proxies Anthropic/OpenAI and records metadata events; the pure XP engine (packages/xp-engine) turns events into an append-only ledger by full deterministic replay — `computeUser` is the only XP math entry point, and `apps/api/src/xp/processor.ts` is the only writer of xp_ledger (also swept every 60s by the api). Ledger rule ids and the "1-XP usage rows" determinism trick are documented at the top of packages/xp-engine/src/rules.ts. Auth is better-auth on one shared `users` table (apps/api/src/auth.ts); product endpoints live under `/v1/me/*`. The whole loop is tested against PGlite in apps/api/src/integration.test.ts — extend that file when touching auth/api/processor. Deploys: push to main → Vercel builds apps/web → kaiden.social. pnpm on this machine only works as `corepack pnpm …` (root-owned ~/.npm cache breaks npm).
 
 ## Hard rules (from the brief — never trade these away)
 

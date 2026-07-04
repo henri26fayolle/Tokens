@@ -3,6 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./server": "./src/server.ts",
+    "./auth": "./src/auth.ts",
+    "./events": "./src/events.ts",
+    "./testing/mock-upstream": "./src/testing/mock-upstream.ts"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit",

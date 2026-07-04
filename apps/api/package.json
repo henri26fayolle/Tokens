@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "xp:process": "tsx scripts/process-xp.ts"
   },
   "dependencies": {
@@ -13,11 +14,16 @@
     "@kaiden/shared": "workspace:*",
     "@kaiden/xp-config": "workspace:*",
     "@kaiden/xp-engine": "workspace:*",
-    "drizzle-orm": "^0.44.7",
+    "better-auth": "^1.6.23",
+    "drizzle-orm": "^0.45.2",
     "fastify": "^5.4.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4",
+    "@kaiden/gateway": "workspace:*",
+    "@types/node": "^24.13.2",
     "tsx": "^4.20.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.6"
   }
 }

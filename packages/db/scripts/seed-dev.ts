@@ -20,7 +20,13 @@ const existing = await db
   .where(eq(users.handle, handle))
   .limit(1);
 const userId =
-  existing[0]?.id ?? (await db.insert(users).values({ handle }).returning({ id: users.id }))[0]?.id;
+  existing[0]?.id ??
+  (
+    await db
+      .insert(users)
+      .values({ handle, email: `${handle}@dev.local` })
+      .returning({ id: users.id })
+  )[0]?.id;
 if (!userId) throw new Error('failed to create user');
 
 const key = `kd_live_${randomBytes(24).toString('base64url')}`;
