@@ -8,14 +8,9 @@ import {
   xpLedger,
 } from '@kaiden/db';
 import { XP_CONFIG, type XpConfig } from '@kaiden/xp-config';
-import {
-  computeUser,
-  type EngineEvent,
-  isValidTimezone,
-  levelForXp,
-  rankForLevel,
-} from '@kaiden/xp-engine';
-import { asc, eq, sql } from 'drizzle-orm';
+import { computeUser, type EngineEvent, isValidTimezone, rankForLevel } from '@kaiden/xp-engine';
+import { asc, eq } from 'drizzle-orm';
+import { refreshUserTotals } from './totals';
 
 export interface ProcessSummary {
   userId: string;
@@ -140,25 +135,14 @@ export async function processUserXp(
       });
   }
 
-  // The DB, not the in-memory computation, is authoritative for totals —
-  // it may contain rows from earlier config versions (never clawed back).
-  const [totals] = await db
-    .select({
-      lifetime: sql<number>`coalesce(sum(${xpLedger.amount}), 0)::int`,
-      season: sql<number>`coalesce(sum(${xpLedger.amount}) filter (where ${xpLedger.seasonId} = ${config.season.current}), 0)::int`,
-    })
-    .from(xpLedger)
-    .where(eq(xpLedger.userId, userId));
-  const lifetimeXp = totals?.lifetime ?? 0;
-  const seasonXp = totals?.season ?? 0;
-  const level = levelForXp(lifetimeXp, config);
+  // The DB, not the in-memory computation, is authoritative for totals — it
+  // may contain rows from earlier config versions (never clawed back) and
+  // social XP rows written outside this replay (xp/social.ts).
+  const { lifetimeXp, seasonXp, level } = await refreshUserTotals(db, userId, config);
 
   await db
     .update(users)
     .set({
-      lifetimeXp,
-      seasonXp,
-      level,
       currentStreak: computed.currentStreak,
       longestStreak: Math.max(user.longestStreak, computed.longestStreak),
     })

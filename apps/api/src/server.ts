@@ -3,6 +3,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import { type Auth, createAuth } from './auth';
 import { PushSender, resolveVapidKeys } from './push';
 import { registerMeRoutes } from './routes/me';
+import { registerPostRoutes } from './routes/posts';
 
 export interface ApiOptions {
   db: Db;
@@ -52,6 +53,7 @@ export function buildServer(options: ApiOptions) {
   });
 
   registerMeRoutes(server, { db: options.db, auth, push });
+  registerPostRoutes(server, { db: options.db, auth });
 
   return server;
 }

@@ -12,8 +12,10 @@ const apiOrigin =
 const nextConfig: NextConfig = {
   transpilePackages: ['@kaiden/shared', '@kaiden/xp-config', '@kaiden/xp-engine'],
   async rewrites() {
-    if (!apiOrigin) return [];
+    const pretty = [{ source: '/@:handle', destination: '/u/:handle' }];
+    if (!apiOrigin) return pretty;
     return [
+      ...pretty,
       { source: '/api/:path*', destination: `${apiOrigin}/api/:path*` },
       { source: '/v1/:path*', destination: `${apiOrigin}/v1/:path*` },
     ];

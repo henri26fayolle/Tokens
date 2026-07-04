@@ -303,6 +303,140 @@ describe('processor against a real database', () => {
   });
 });
 
+describe('social: posts, kudos, copies', () => {
+  let bobCookie = '';
+  let postId = '';
+
+  async function bobFetch(path: string, init: RequestInit = {}): Promise<Response> {
+    return fetch(`${apiUrl}${path}`, {
+      ...init,
+      headers: { 'content-type': 'application/json', cookie: bobCookie, ...(init.headers ?? {}) },
+    });
+  }
+
+  it('publishing a post attaches verified chips and awards 100 XP', async () => {
+    const before = await json<{ lifetimeXp: number }>(await apiFetch('/v1/me/profile'));
+    const response = await apiFetch('/v1/posts', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Kaiden itself',
+        url: 'https://kaiden.social',
+        body: 'Built a Strava for AI users in a day.',
+        recipe: 'Claude Code + a product brief + relentless milestones.',
+      }),
+    });
+    expect(response.status).toBe(201);
+    const post = await json<{
+      id: string;
+      chips: { models: string[]; rank: string; streak: number };
+      author: { handle: string };
+    }>(response);
+    postId = post.id;
+    expect(post.author.handle).toBe('henri');
+    expect(post.chips.models).toContain('anthropic/claude-sonnet-5');
+    expect(post.chips.rank).toBeDefined();
+
+    const after = await json<{ lifetimeXp: number }>(await apiFetch('/v1/me/profile'));
+    expect(after.lifetimeXp).toBe(before.lifetimeXp + 100);
+  });
+
+  it('rejects garbage posts', async () => {
+    const noTitle = await apiFetch('/v1/posts', {
+      method: 'POST',
+      body: JSON.stringify({ body: 'x' }),
+    });
+    expect(noTitle.status).toBe(400);
+    const badUrl = await apiFetch('/v1/posts', {
+      method: 'POST',
+      body: JSON.stringify({ title: 't', body: 'b', url: 'javascript:alert(1)' }),
+    });
+    expect(badUrl.status).toBe(400);
+  });
+
+  it('the feed is public and shows the post with author rank', async () => {
+    const response = await fetch(`${apiUrl}/v1/feed`);
+    expect(response.status).toBe(200);
+    const feed = await json<{
+      posts: Array<{ id: string; author: { handle: string; rank: string }; myKudos: boolean }>;
+    }>(response);
+    const post = feed.posts.find((p) => p.id === postId);
+    expect(post).toBeDefined();
+    expect(post?.author.rank).toMatch(/kyū|dan/u);
+    expect(post?.myKudos).toBe(false);
+  });
+
+  it('kudos: no self-kudos, +5 XP to the author, idempotent across toggles', async () => {
+    const self = await apiFetch(`/v1/posts/${postId}/kudos`, { method: 'POST' });
+    expect(self.status).toBe(400);
+
+    const signup = await fetch(`${apiUrl}/api/auth/sign-up/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: 'bob@kaiden.social',
+        password: 'another-strong-pass',
+        name: 'Bob',
+        handle: 'bob',
+        timezone: 'UTC',
+      }),
+    });
+    expect(signup.status).toBe(200);
+    bobCookie = signup.headers
+      .getSetCookie()
+      .map((c) => c.split(';')[0])
+      .join('; ');
+
+    const authorBefore = await json<{ lifetimeXp: number }>(await apiFetch('/v1/me/profile'));
+    const first = await json<{ kudosCount: number }>(
+      await bobFetch(`/v1/posts/${postId}/kudos`, { method: 'POST' }),
+    );
+    expect(first.kudosCount).toBe(1);
+    const authorAfter = await json<{ lifetimeXp: number }>(await apiFetch('/v1/me/profile'));
+    expect(authorAfter.lifetimeXp).toBe(authorBefore.lifetimeXp + 5);
+
+    // Un-kudos removes the heart but never the XP; re-kudos re-adds the
+    // heart but never double-awards.
+    const off = await json<{ kudosCount: number }>(
+      await bobFetch(`/v1/posts/${postId}/kudos`, { method: 'DELETE' }),
+    );
+    expect(off.kudosCount).toBe(0);
+    const on = await json<{ kudosCount: number }>(
+      await bobFetch(`/v1/posts/${postId}/kudos`, { method: 'POST' }),
+    );
+    expect(on.kudosCount).toBe(1);
+    const authorFinal = await json<{ lifetimeXp: number }>(await apiFetch('/v1/me/profile'));
+    expect(authorFinal.lifetimeXp).toBe(authorBefore.lifetimeXp + 5);
+  });
+
+  it('copying a recipe awards the author 15 XP, once per copier', async () => {
+    const authorBefore = await json<{ lifetimeXp: number }>(await apiFetch('/v1/me/profile'));
+    const first = await json<{ copyCount: number }>(
+      await bobFetch(`/v1/posts/${postId}/copy`, { method: 'POST' }),
+    );
+    expect(first.copyCount).toBe(1);
+    const again = await json<{ copyCount: number }>(
+      await bobFetch(`/v1/posts/${postId}/copy`, { method: 'POST' }),
+    );
+    expect(again.copyCount).toBe(1);
+    const authorAfter = await json<{ lifetimeXp: number }>(await apiFetch('/v1/me/profile'));
+    expect(authorAfter.lifetimeXp).toBe(authorBefore.lifetimeXp + 15);
+  });
+
+  it('public profiles show rank, achievements, and posts', async () => {
+    const response = await fetch(`${apiUrl}/v1/users/henri`);
+    expect(response.status).toBe(200);
+    const profile = await json<{
+      handle: string;
+      rank: string;
+      posts: Array<{ id: string }>;
+    }>(response);
+    expect(profile.handle).toBe('henri');
+    expect(profile.posts.some((p) => p.id === postId)).toBe(true);
+
+    expect((await fetch(`${apiUrl}/v1/users/nobody-here`)).status).toBe(404);
+  });
+});
+
 describe('wrapped', () => {
   it('aggregates the month from daily_activity, ledger, and moments', async () => {
     // Rides on the session user from the full-loop suite (15 calls today).

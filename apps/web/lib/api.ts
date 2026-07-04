@@ -87,3 +87,39 @@ export interface SessionUser {
   handle: string;
   email: string;
 }
+
+export interface PostChips {
+  rank?: string;
+  level?: number;
+  streak?: number;
+  models?: string[];
+  moment?: Record<string, unknown>;
+}
+
+export interface FeedPost {
+  id: string;
+  title: string;
+  url: string | null;
+  body: string;
+  recipe: string | null;
+  chips: PostChips;
+  kudosCount: number;
+  copyCount: number;
+  createdAt: string;
+  author: { handle: string; level: number; rank: string };
+  myKudos: boolean;
+}
+
+export interface PublicProfile {
+  handle: string;
+  level: number;
+  rank: string;
+  lifetimeXp: number;
+  seasonXp: number;
+  seasonId: string;
+  currentStreak: number;
+  longestStreak: number;
+  memberSince: string;
+  achievements: Array<{ achievementId: string; grantedAt: string }>;
+  posts: FeedPost[];
+}

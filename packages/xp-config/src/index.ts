@@ -38,6 +38,8 @@ export interface XpConfig {
     publishWazaXp: number;
     kudosReceivedXp: number;
     kudosDecayAfter: number;
+    /** Per-kudos XP after the first kudosDecayAfter on a post. */
+    kudosDecayedXp: number;
     wazaCopiedXp: number;
   };
   levels: {
@@ -57,7 +59,7 @@ export interface XpConfig {
 }
 
 export const XP_CONFIG: XpConfig = {
-  version: '2026.07.1',
+  version: '2026.07.2',
   season: {
     current: '2026Q3',
   },
@@ -99,12 +101,17 @@ export const XP_CONFIG: XpConfig = {
     deepSessionXp: 20,
     deepSessionMinTurns: 10,
   },
-  /** Phase 2 — present so the economy is complete on paper; nothing awards these yet. */
+  /**
+   * Phase 2 — LIVE as of 2026.07.2. Awarded by the api's social actions
+   * (apps/api/src/routes/posts.ts), not the usage-replay engine; same
+   * append-only ledger, same no-clawback rule (un-kudos keeps the XP).
+   */
   social: {
     publishWazaXp: 100,
     kudosReceivedXp: 5,
     /** per post, kudos XP decays after this many */
     kudosDecayAfter: 100,
+    kudosDecayedXp: 1,
     wazaCopiedXp: 15,
   },
   levels: {
