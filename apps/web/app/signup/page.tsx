@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
+import { Crest } from '../../components/Crest';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -42,10 +43,8 @@ export default function SignupPage() {
 
   return (
     <main className="container" style={{ paddingTop: 56 }}>
-      <p style={{ fontSize: 40, margin: '0 0 4px' }} aria-hidden>
-        皆伝
-      </p>
-      <h1 style={{ fontSize: 24, margin: '0 0 4px' }}>Claim your handle</h1>
+      <Crest size={52} />
+      <h1 style={{ fontSize: 24, margin: '14px 0 4px' }}>Claim your handle</h1>
       <p className="muted" style={{ marginTop: 0 }}>
         Every journey starts at 9-kyū.
       </p>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ActivityChart } from '../../components/ActivityChart';
+import { Crest } from '../../components/Crest';
 import { PushButton } from '../../components/PushButton';
 import { ShareCardButton } from '../../components/ShareCardButton';
 import { TabBar } from '../../components/TabBar';
@@ -50,9 +51,9 @@ export default function HomePage() {
   if (loading || !user || !profile) {
     return (
       <main className="container" style={{ paddingTop: 120, textAlign: 'center' }}>
-        <p style={{ fontSize: 40 }} aria-hidden>
-          皆伝
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+          <Crest size={56} />
+        </div>
         <p className="muted">Loading…</p>
       </main>
     );
@@ -75,8 +76,10 @@ export default function HomePage() {
           marginBottom: 16,
         }}
       >
-        <div style={{ fontWeight: 800, fontSize: 18 }}>
-          皆伝 <span style={{ fontWeight: 600 }}>Kaiden</span>
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 18 }}
+        >
+          <Crest size={24} /> Kaiden
         </div>
         <button
           type="button"

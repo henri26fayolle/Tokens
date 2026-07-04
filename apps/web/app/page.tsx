@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { Crest } from '../components/Crest';
 import { useSession } from '../lib/session';
 
 export default function Landing() {
@@ -25,10 +26,10 @@ export default function Landing() {
       }}
     >
       <div style={{ textAlign: 'center', marginBottom: 36 }}>
-        <p style={{ fontSize: 64, margin: 0 }} aria-hidden>
-          皆伝
-        </p>
-        <h1 style={{ fontSize: 28, fontWeight: 800, margin: '8px 0 6px', letterSpacing: 0.3 }}>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <Crest size={92} />
+        </div>
+        <h1 style={{ fontSize: 28, fontWeight: 800, margin: '14px 0 6px', letterSpacing: 0.3 }}>
           Kaiden
         </h1>
         <p className="muted" style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}>

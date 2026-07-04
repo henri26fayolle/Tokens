@@ -74,7 +74,10 @@ function toWebRequest(request: FastifyRequest): Request {
     Buffer.isBuffer(request.body) && request.body.length > 0
       ? new Uint8Array(request.body)
       : undefined;
-  const origin = `${request.protocol}://${request.hostname}:${request.port}`;
+  // Behind proxies (Railway/Vercel) request.port can be null — omit it and
+  // let the scheme imply the port, otherwise the URL is invalid.
+  const port = request.port ? `:${request.port}` : '';
+  const origin = `${request.protocol}://${request.hostname}${port}`;
   return new Request(`${origin}${request.url}`, { method: request.method, headers, body });
 }
 

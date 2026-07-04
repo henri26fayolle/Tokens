@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
+import { Crest } from '../../components/Crest';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,10 +36,8 @@ export default function LoginPage() {
 
   return (
     <main className="container" style={{ paddingTop: 56 }}>
-      <p style={{ fontSize: 40, margin: '0 0 4px' }} aria-hidden>
-        皆伝
-      </p>
-      <h1 style={{ fontSize: 24, margin: '0 0 16px' }}>Welcome back</h1>
+      <Crest size={52} />
+      <h1 style={{ fontSize: 24, margin: '14px 0 16px' }}>Welcome back</h1>
       <form onSubmit={submit} className="card">
         <input
           className="input"
