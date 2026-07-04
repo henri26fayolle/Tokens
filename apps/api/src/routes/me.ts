@@ -2,6 +2,7 @@ import {
   type Db,
   dailyActivity,
   gatewayKeys,
+  pushSubscriptions,
   usageEvents,
   userAchievements,
   users,
@@ -12,11 +13,13 @@ import { rankForLevel, xpToReachLevel } from '@kaiden/xp-engine';
 import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Auth } from '../auth';
+import type { PushSender } from '../push';
 import { processUserXp } from '../xp/processor';
 
 interface Deps {
   db: Db;
   auth: Auth;
+  push: PushSender;
 }
 
 interface SessionUser {
@@ -163,6 +166,45 @@ export function registerMeRoutes(server: FastifyInstance, deps: Deps): void {
     const user = await requireUser(request, reply);
     if (!user) return;
     return processUserXp(deps.db, user.id);
+  });
+
+  server.get('/v1/me/push/public-key', async (request, reply) => {
+    const user = await requireUser(request, reply);
+    if (!user) return;
+    return { publicKey: deps.push.publicKey };
+  });
+
+  server.post('/v1/me/push/subscribe', async (request, reply) => {
+    const user = await requireUser(request, reply);
+    if (!user) return;
+    const body = parseJsonBody(request);
+    const endpoint = typeof body.endpoint === 'string' ? body.endpoint : null;
+    const keys = (body.keys ?? {}) as Record<string, unknown>;
+    const p256dh = typeof keys.p256dh === 'string' ? keys.p256dh : null;
+    const authKey = typeof keys.auth === 'string' ? keys.auth : null;
+    if (!endpoint || !p256dh || !authKey) {
+      return reply.code(400).send({ error: 'invalid_subscription' });
+    }
+    await deps.db
+      .insert(pushSubscriptions)
+      .values({ userId: user.id, endpoint, p256dh, auth: authKey })
+      .onConflictDoUpdate({
+        target: pushSubscriptions.endpoint,
+        set: { userId: user.id, p256dh, auth: authKey },
+      });
+    return { subscribed: true };
+  });
+
+  server.post('/v1/me/push/unsubscribe', async (request, reply) => {
+    const user = await requireUser(request, reply);
+    if (!user) return;
+    const body = parseJsonBody(request);
+    const endpoint = typeof body.endpoint === 'string' ? body.endpoint : null;
+    if (!endpoint) return reply.code(400).send({ error: 'invalid_subscription' });
+    await deps.db
+      .delete(pushSubscriptions)
+      .where(and(eq(pushSubscriptions.endpoint, endpoint), eq(pushSubscriptions.userId, user.id)));
+    return { subscribed: false };
   });
 
   server.get('/v1/me/onboarding', async (request, reply) => {

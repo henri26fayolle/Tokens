@@ -10,7 +10,17 @@ Strava for AI users — point your AI SDKs at the Kaiden gateway, earn XP, climb
 - pnpm 10 (`corepack enable` if you don't have it)
 - Docker (local Postgres)
 
-## Quickstart
+## Quickstart (no Docker)
+
+```sh
+pnpm install
+DATABASE_URL=pglite://.data/dev DEV_EMBED_GATEWAY=1 pnpm --filter @kaiden/api dev   # api + gateway on :4000
+pnpm --filter @kaiden/web dev                                                       # web on :3000
+```
+
+Open http://localhost:3000 → sign up → Connect → run a snippet → watch the XP land.
+
+## Quickstart (Postgres)
 
 ```sh
 pnpm install

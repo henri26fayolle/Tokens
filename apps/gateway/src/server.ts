@@ -1,4 +1,4 @@
-import Fastify, { type FastifyBaseLogger } from 'fastify';
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import type { KeyResolver } from './auth';
 import type { EventSink } from './events';
 import { proxyRequest } from './proxy';
@@ -21,24 +21,14 @@ export interface GatewayOptions {
   loggerStream?: NodeJS.WritableStream;
 }
 
-export function buildServer(options: GatewayOptions) {
-  const server = Fastify({
-    logger: {
-      level: options.logLevel ?? process.env.LOG_LEVEL ?? 'info',
-      ...(options.loggerStream ? { stream: options.loggerStream } : {}),
-    },
-    bodyLimit: 32 * 1024 * 1024,
-  });
-
-  // Proxied bodies must stay raw bytes — no JSON parsing on the request path.
-  server.removeAllContentTypeParsers();
-  server.addContentTypeParser('*', { parseAs: 'buffer' }, (_request, payload, done) => {
-    done(null, payload);
-  });
-
+/**
+ * Registers the proxy routes on an existing Fastify instance. The standalone
+ * gateway uses this via buildServer; the api's DEV_EMBED_GATEWAY mode mounts
+ * the same routes in-process so PGlite dev works without two processes.
+ * The host server must parse bodies as raw Buffers.
+ */
+export function registerGatewayRoutes(server: FastifyInstance, options: GatewayOptions): void {
   const eventSink = options.createEventSink(server.log);
-
-  server.get('/healthz', async () => ({ ok: true, service: 'gateway' }));
 
   server.all('/anthropic/*', (request, reply) =>
     proxyRequest(request, reply, {
@@ -59,6 +49,26 @@ export function buildServer(options: GatewayOptions) {
       eventSink,
     }),
   );
+}
+
+export function buildServer(options: GatewayOptions) {
+  const server = Fastify({
+    logger: {
+      level: options.logLevel ?? process.env.LOG_LEVEL ?? 'info',
+      ...(options.loggerStream ? { stream: options.loggerStream } : {}),
+    },
+    bodyLimit: 32 * 1024 * 1024,
+  });
+
+  // Proxied bodies must stay raw bytes — no JSON parsing on the request path.
+  server.removeAllContentTypeParsers();
+  server.addContentTypeParser('*', { parseAs: 'buffer' }, (_request, payload, done) => {
+    done(null, payload);
+  });
+
+  server.get('/healthz', async () => ({ ok: true, service: 'gateway' }));
+
+  registerGatewayRoutes(server, options);
 
   return server;
 }

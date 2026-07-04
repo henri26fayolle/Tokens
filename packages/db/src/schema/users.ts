@@ -21,6 +21,8 @@ export const users = pgTable('users', {
   longestStreak: integer('longest_streak').notNull().default(0),
   /** Display cache of levelForXp(lifetimeXp) — the xp_ledger is the source of truth. */
   level: integer('level').notNull().default(1),
+  /** Last user-local day a streak-at-risk push was sent (max one per day). */
+  streakPushDay: text('streak_push_day'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

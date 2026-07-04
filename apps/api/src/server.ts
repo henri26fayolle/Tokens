@@ -1,6 +1,7 @@
 import type { Db } from '@kaiden/db';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import { type Auth, createAuth } from './auth';
+import { PushSender, resolveVapidKeys } from './push';
 import { registerMeRoutes } from './routes/me';
 
 export interface ApiOptions {
@@ -31,6 +32,8 @@ export function buildServer(options: ApiOptions) {
   const secret = options.secret ?? process.env.BETTER_AUTH_SECRET ?? '';
   const effectiveSecret = secret || 'kaiden-dev-secret-change-me';
   const auth = createAuth({ db: options.db, secret: effectiveSecret, baseURL: options.baseURL });
+  const push = new PushSender(options.db, resolveVapidKeys(server.log), server.log);
+  server.decorate('kaidenPush', push);
 
   server.get('/healthz', async () => ({ ok: true, service: 'api' }));
 
@@ -46,13 +49,18 @@ export function buildServer(options: ApiOptions) {
     },
   });
 
-  registerMeRoutes(server, { db: options.db, auth });
+  registerMeRoutes(server, { db: options.db, auth, push });
 
   return server;
 }
 
 export type ApiServer = ReturnType<typeof buildServer>;
 export type { Auth };
+
+/** The PushSender created inside buildServer (used by the sweep in index.ts). */
+export function getPushSender(server: ApiServer): PushSender {
+  return (server as unknown as { kaidenPush: PushSender }).kaidenPush;
+}
 
 function toWebRequest(request: FastifyRequest): Request {
   const headers = new Headers();

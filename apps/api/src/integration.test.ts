@@ -195,6 +195,29 @@ describe('the full loop: signup → key → gateway → xp → profile', () => {
     });
   });
 
+  it('exposes a VAPID public key and stores push subscriptions', async () => {
+    const keyResponse = await json<{ publicKey: string }>(await apiFetch('/v1/me/push/public-key'));
+    expect(keyResponse.publicKey.length).toBeGreaterThan(20);
+
+    const subscribe = await apiFetch('/v1/me/push/subscribe', {
+      method: 'POST',
+      body: JSON.stringify({
+        endpoint: 'https://push.example/sub-1',
+        keys: { p256dh: 'p256dh-key', auth: 'auth-key' },
+      }),
+    });
+    expect(subscribe.status).toBe(200);
+    const stored = await db.select().from(schema.pushSubscriptions);
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.endpoint).toBe('https://push.example/sub-1');
+
+    const badSubscribe = await apiFetch('/v1/me/push/subscribe', {
+      method: 'POST',
+      body: JSON.stringify({ endpoint: 'x' }),
+    });
+    expect(badSubscribe.status).toBe(400);
+  });
+
   it('revoked keys stop working once the gateway cache expires', async () => {
     const revoke = await apiFetch(`/v1/me/keys/${keyId}`, { method: 'DELETE' });
     expect(revoke.status).toBe(200);
@@ -250,6 +273,8 @@ describe('processor against a real database', () => {
     // Hand-computed from config v2026.07.1 — if this fails, the economy moved.
     expect(first.lifetimeXp).toBe(299);
     expect(first.level).toBe(2);
+    expect(first.previousLevel).toBe(1);
+    expect(first.newAchievements).toEqual([]);
     expect(first.currentStreak).toBe(1);
     expect(first.longestStreak).toBe(2);
 

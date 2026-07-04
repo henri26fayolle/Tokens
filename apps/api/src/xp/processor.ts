@@ -15,12 +15,17 @@ export interface ProcessSummary {
   lifetimeXp: number;
   seasonXp: number;
   level: number;
+  /** Level before this run — level > previousLevel means a level-up push. */
+  previousLevel: number;
   rank: string;
   currentStreak: number;
   longestStreak: number;
   eventCount: number;
   proposedLedgerRows: number;
+  /** Every achievement the replay proposes (all-time). */
   achievements: string[];
+  /** Only the ones this run actually inserted — push-notification material. */
+  newAchievements: string[];
 }
 
 const INSERT_CHUNK = 500;
@@ -78,11 +83,14 @@ export async function processUserXp(
       .onConflictDoNothing({ target: xpLedger.idempotencyKey });
   }
 
+  let newAchievements: string[] = [];
   if (computed.achievements.length > 0) {
-    await db
+    const inserted = await db
       .insert(userAchievements)
       .values(computed.achievements.map((achievementId) => ({ userId, achievementId })))
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .returning({ achievementId: userAchievements.achievementId });
+    newAchievements = inserted.map((row) => row.achievementId);
   }
 
   for (const day of computed.days) {
@@ -134,11 +142,13 @@ export async function processUserXp(
     lifetimeXp,
     seasonXp,
     level,
+    previousLevel: user.level,
     rank: rankForLevel(level, config),
     currentStreak: computed.currentStreak,
     longestStreak: Math.max(user.longestStreak, computed.longestStreak),
     eventCount: events.length,
     proposedLedgerRows: computed.ledger.length,
     achievements: computed.achievements,
+    newAchievements,
   };
 }
