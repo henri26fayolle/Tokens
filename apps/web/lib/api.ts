@@ -148,6 +148,10 @@ export interface PublicProfile {
   currentStreak: number;
   longestStreak: number;
   memberSince: string;
+  followerCount: number;
+  followingCount: number;
+  iFollow: boolean;
+  isMe: boolean;
   achievements: Array<{ achievementId: string; grantedAt: string }>;
   posts: FeedPost[];
 }

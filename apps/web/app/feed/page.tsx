@@ -8,15 +8,25 @@ import { TabBar } from '../../components/TabBar';
 import { apiGet, type FeedPost } from '../../lib/api';
 import { useSession } from '../../lib/session';
 
+type Scope = 'following' | 'discover';
+
 export default function FeedPage() {
   const { loading, user } = useSession();
+  const [scope, setScope] = useState<Scope>('discover');
   const [posts, setPosts] = useState<FeedPost[] | null>(null);
 
+  // Default signed-in users to their Following feed; guests to Discover.
   useEffect(() => {
-    apiGet<{ posts: FeedPost[] }>('/v1/feed')
+    if (!loading) setScope(user ? 'following' : 'discover');
+  }, [loading, user]);
+
+  useEffect(() => {
+    setPosts(null);
+    const path = scope === 'following' ? '/v1/feed?scope=following' : '/v1/feed';
+    apiGet<{ posts: FeedPost[] }>(path)
       .then((feed) => setPosts(feed.posts))
       .catch(() => setPosts([]));
-  }, []);
+  }, [scope]);
 
   return (
     <main className="container">
@@ -38,6 +48,25 @@ export default function FeedPage() {
         )}
       </header>
 
+      {user && (
+        <div className="tabs">
+          <button
+            type="button"
+            className={scope === 'following' ? 'active' : ''}
+            onClick={() => setScope('following')}
+          >
+            Following
+          </button>
+          <button
+            type="button"
+            className={scope === 'discover' ? 'active' : ''}
+            onClick={() => setScope('discover')}
+          >
+            Discover
+          </button>
+        </div>
+      )}
+
       {posts === null && <p className="muted">Loading the feed…</p>}
 
       {posts !== null && posts.length === 0 && (
@@ -45,14 +74,33 @@ export default function FeedPage() {
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
             <Crest size={48} />
           </div>
-          <strong>Nothing here yet.</strong>
-          <p className="muted" style={{ fontSize: 14 }}>
-            The first waza is waiting to be posted.
-          </p>
-          {user && (
-            <Link href="/post/new" className="btn btn-primary" style={{ marginTop: 8 }}>
-              Share what you built
-            </Link>
+          {scope === 'following' && user ? (
+            <>
+              <strong>Your following feed is quiet.</strong>
+              <p className="muted" style={{ fontSize: 14 }}>
+                Follow some climbers on the Ranks board, or see everything in Discover.
+              </p>
+              <button
+                type="button"
+                className="btn"
+                style={{ marginTop: 8 }}
+                onClick={() => setScope('discover')}
+              >
+                Browse Discover
+              </button>
+            </>
+          ) : (
+            <>
+              <strong>Nothing here yet.</strong>
+              <p className="muted" style={{ fontSize: 14 }}>
+                The first waza is waiting to be posted.
+              </p>
+              {user && (
+                <Link href="/post/new" className="btn btn-primary" style={{ marginTop: 8 }}>
+                  Share what you built
+                </Link>
+              )}
+            </>
           )}
         </div>
       )}

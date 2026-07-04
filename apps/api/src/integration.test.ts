@@ -485,6 +485,76 @@ describe('social: posts, kudos, copies', () => {
   });
 });
 
+describe('follows and the following feed', () => {
+  let carolCookie = '';
+
+  async function carolFetch(path: string, init: RequestInit = {}): Promise<Response> {
+    return fetch(`${apiUrl}${path}`, {
+      ...init,
+      headers: { 'content-type': 'application/json', cookie: carolCookie, ...(init.headers ?? {}) },
+    });
+  }
+
+  it('follow is directional, self-follow is blocked, and counts update', async () => {
+    const signup = await fetch(`${apiUrl}/api/auth/sign-up/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: 'carol@kaiden.social',
+        password: 'carol-strong-pass',
+        name: 'Carol',
+        handle: 'carol',
+        timezone: 'UTC',
+      }),
+    });
+    carolCookie = signup.headers
+      .getSetCookie()
+      .map((c) => c.split(';')[0])
+      .join('; ');
+
+    // Henri (module cookie) can't follow himself.
+    expect((await apiFetch('/v1/users/henri/follow', { method: 'POST' })).status).toBe(400);
+
+    // Carol follows Henri.
+    expect((await carolFetch('/v1/users/henri/follow', { method: 'POST' })).status).toBe(200);
+    // Idempotent — following again is a no-op, not a double count.
+    await carolFetch('/v1/users/henri/follow', { method: 'POST' });
+
+    const henriProfile = await json<{ followerCount: number; isMe: boolean; iFollow: boolean }>(
+      await carolFetch('/v1/users/henri'),
+    );
+    expect(henriProfile.followerCount).toBe(1);
+    expect(henriProfile.iFollow).toBe(true);
+    expect(henriProfile.isMe).toBe(false);
+
+    const carolProfile = await json<{ followingCount: number }>(
+      await carolFetch('/v1/users/carol'),
+    );
+    expect(carolProfile.followingCount).toBe(1);
+  });
+
+  it('the following feed shows only followed authors, and follows earn no XP', async () => {
+    // Henri has published; Carol follows him → his post is in her following feed.
+    const following = await json<{ posts: Array<{ author: { handle: string } }> }>(
+      await carolFetch('/v1/feed?scope=following'),
+    );
+    expect(following.posts.length).toBeGreaterThan(0);
+    expect(following.posts.every((p) => p.author.handle === 'henri')).toBe(true);
+
+    // A stranger she doesn't follow would not appear — unfollow proves it.
+    await carolFetch('/v1/users/henri/follow', { method: 'DELETE' });
+    const empty = await json<{ posts: unknown[] }>(await carolFetch('/v1/feed?scope=following'));
+    expect(empty.posts).toHaveLength(0);
+
+    // Following never touches the economy, either direction.
+    const ledger = await db.select().from(schema.xpLedger);
+    expect(ledger.some((row) => row.ruleId.includes('follow'))).toBe(false);
+
+    // The following feed requires a session.
+    expect((await fetch(`${apiUrl}/v1/feed?scope=following`)).status).toBe(401);
+  });
+});
+
 describe('leaderboard', () => {
   it('ranks earners, crowns the Meijin, and leaves pure spectators unranked', async () => {
     // A spectator who signs up but never connects earns nothing.

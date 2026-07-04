@@ -2,6 +2,7 @@ import {
   comments,
   type Db,
   dailyActivity,
+  follows,
   kudos,
   moments,
   postCopies,
@@ -92,14 +93,28 @@ export function registerPostRoutes(server: FastifyInstance, deps: Deps): void {
   const requireUser = makeRequireUser(deps.auth);
   const optionalUser = makeOptionalUser(deps.auth);
 
-  server.get('/v1/feed', async (request) => {
+  server.get('/v1/feed', async (request, reply) => {
     const me = await optionalUser(request);
     const query = request.query as Record<string, string | undefined>;
     const limit = Math.min(Math.max(Number(query.limit ?? 20) || 20, 1), 50);
     const before = query.before ? new Date(query.before) : null;
+    const following = query.scope === 'following';
+    if (following && !me) return reply.code(401).send({ error: 'unauthorized' });
 
     const conditions = [isNull(posts.deletedAt), eq(posts.published, true)];
     if (before && !Number.isNaN(before.getTime())) conditions.push(lt(posts.createdAt, before));
+    if (following && me) {
+      // Only posts by people I follow (my own posts live on my profile).
+      conditions.push(
+        inArray(
+          posts.userId,
+          deps.db
+            .select({ id: follows.followingId })
+            .from(follows)
+            .where(eq(follows.followerId, me.id)),
+        ),
+      );
+    }
 
     const rows = await deps.db
       .select({ post: posts, handle: users.handle, level: users.level })
@@ -457,7 +472,56 @@ export function registerPostRoutes(server: FastifyInstance, deps: Deps): void {
     return { copied: true, copyCount: fresh?.copyCount ?? post.copyCount };
   });
 
+  server.post('/v1/users/:handle/follow', async (request, reply) => {
+    const user = await requireUser(request, reply);
+    if (!user) return;
+    const { handle } = request.params as { handle: string };
+    const [target] = await deps.db
+      .select({ id: users.id, handle: users.handle })
+      .from(users)
+      .where(eq(users.handle, handle.toLowerCase()))
+      .limit(1);
+    if (!target) return reply.code(404).send({ error: 'not_found' });
+    if (target.id === user.id) return reply.code(400).send({ error: 'no_self_follow' });
+
+    const inserted = await deps.db
+      .insert(follows)
+      .values({ followerId: user.id, followingId: target.id })
+      .onConflictDoNothing()
+      .returning({ followingId: follows.followingId });
+    // No XP — following is attention, not achievement. Just the tap on the
+    // shoulder, once (re-follow after unfollow doesn't re-notify... it does,
+    // but that requires an unfollow first, which is rare and self-limiting).
+    if (inserted.length > 0) {
+      deps.push
+        .send(target.id, {
+          title: `@${user.handle} is now following you`,
+          body: 'Your climb has an audience.',
+          url: `/u/${user.handle}`,
+        })
+        .catch(() => null);
+    }
+    return { following: true };
+  });
+
+  server.delete('/v1/users/:handle/follow', async (request, reply) => {
+    const user = await requireUser(request, reply);
+    if (!user) return;
+    const { handle } = request.params as { handle: string };
+    const [target] = await deps.db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.handle, handle.toLowerCase()))
+      .limit(1);
+    if (!target) return reply.code(404).send({ error: 'not_found' });
+    await deps.db
+      .delete(follows)
+      .where(and(eq(follows.followerId, user.id), eq(follows.followingId, target.id)));
+    return { following: false };
+  });
+
   server.get('/v1/users/:handle', async (request, reply) => {
+    const me = await optionalUser(request);
     const { handle } = request.params as { handle: string };
     const [row] = await deps.db
       .select()
@@ -465,6 +529,24 @@ export function registerPostRoutes(server: FastifyInstance, deps: Deps): void {
       .where(eq(users.handle, handle.toLowerCase()))
       .limit(1);
     if (!row) return reply.code(404).send({ error: 'not_found' });
+
+    const [[followers], [followingCount], iFollowRows] = await Promise.all([
+      deps.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(follows)
+        .where(eq(follows.followingId, row.id)),
+      deps.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(follows)
+        .where(eq(follows.followerId, row.id)),
+      me
+        ? deps.db
+            .select({ followingId: follows.followingId })
+            .from(follows)
+            .where(and(eq(follows.followerId, me.id), eq(follows.followingId, row.id)))
+            .limit(1)
+        : Promise.resolve([]),
+    ]);
 
     const granted = await deps.db
       .select({
@@ -496,6 +578,10 @@ export function registerPostRoutes(server: FastifyInstance, deps: Deps): void {
       currentStreak: row.currentStreak,
       longestStreak: row.longestStreak,
       memberSince: row.createdAt,
+      followerCount: followers?.count ?? 0,
+      followingCount: followingCount?.count ?? 0,
+      iFollow: iFollowRows.length > 0,
+      isMe: me?.id === row.id,
       achievements: granted,
       posts: recent.map((post) => toFeedPost(post, author, false)),
     };

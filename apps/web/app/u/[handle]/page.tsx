@@ -1,11 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Crest } from '../../../components/Crest';
 import { PostCard } from '../../../components/PostCard';
 import { TabBar } from '../../../components/TabBar';
-import { apiGet, type PublicProfile } from '../../../lib/api';
+import { apiDelete, apiGet, apiPost, type PublicProfile } from '../../../lib/api';
 import { useSession } from '../../../lib/session';
 
 export default function PublicProfilePage() {
@@ -13,6 +14,7 @@ export default function PublicProfilePage() {
   const { user } = useSession();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [missing, setMissing] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!params.handle) return;
@@ -20,6 +22,33 @@ export default function PublicProfilePage() {
       .then(setProfile)
       .catch(() => setMissing(true));
   }, [params.handle]);
+
+  const toggleFollow = async () => {
+    if (!profile) return;
+    if (!user) {
+      window.location.href = '/login';
+      return;
+    }
+    setBusy(true);
+    const path = `/v1/users/${profile.handle}/follow`;
+    try {
+      if (profile.iFollow) {
+        await apiDelete(path);
+        setProfile({
+          ...profile,
+          iFollow: false,
+          followerCount: Math.max(0, profile.followerCount - 1),
+        });
+      } else {
+        await apiPost(path);
+        setProfile({ ...profile, iFollow: true, followerCount: profile.followerCount + 1 });
+      }
+    } catch {
+      /* ignore — leave state as is */
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (missing) {
     return (
@@ -64,6 +93,40 @@ export default function PublicProfilePage() {
         <div className="faint" style={{ fontSize: 12, marginTop: 6 }}>
           climbing since {new Date(profile.memberSince).toLocaleDateString()}
         </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 20,
+            margin: '14px 0 4px',
+            fontSize: 13,
+          }}
+        >
+          <span>
+            <strong>{Intl.NumberFormat().format(profile.followerCount)}</strong>{' '}
+            <span className="faint">followers</span>
+          </span>
+          <span>
+            <strong>{Intl.NumberFormat().format(profile.followingCount)}</strong>{' '}
+            <span className="faint">following</span>
+          </span>
+        </div>
+        {!profile.isMe && (
+          <button
+            type="button"
+            className={profile.iFollow ? 'btn' : 'btn btn-primary'}
+            style={{ marginTop: 10 }}
+            onClick={toggleFollow}
+            disabled={busy}
+          >
+            {profile.iFollow ? 'Following ✓' : 'Follow'}
+          </button>
+        )}
+        {profile.isMe && (
+          <Link href="/home" className="btn" style={{ marginTop: 10 }}>
+            This is you — go to Stats
+          </Link>
+        )}
       </section>
 
       {profile.posts.length > 0 ? (

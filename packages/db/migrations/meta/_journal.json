@@ -43,6 +43,13 @@
       "when": 1783159523530,
       "tag": "0005_thin_micromax",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783161392681,
+      "tag": "0006_legal_hiroim",
+      "breakpoints": true
     }
   ]
 }

@@ -96,3 +96,26 @@ export const postCopies = pgTable(
   },
   (t) => [primaryKey({ columns: [t.postId, t.userId] })],
 );
+
+/**
+ * Directed follows (follower → following). No XP either way — following is
+ * attention, not achievement (and farmable otherwise), consistent with the
+ * "giving isn't gaming" line the leaderboard proves. The following index
+ * serves follower lookups; the PK order serves "who I follow" + the feed.
+ */
+export const follows = pgTable(
+  'follows',
+  {
+    followerId: uuid('follower_id')
+      .notNull()
+      .references(() => users.id),
+    followingId: uuid('following_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.followerId, t.followingId] }),
+    index('follows_following_idx').on(t.followingId),
+  ],
+);
